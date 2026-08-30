@@ -356,6 +356,32 @@ test("admin override relinquishes only owned values", function()
     assertEqual(snowBool.enableModded, false)
 end)
 
+test("Insane frequency triggers on the first eligible roll", function()
+    local probabilities = ChangingSkies.Constants.WEATHER_PROBABILITIES
+    assertNear(probabilities[1], 1.0 / (144.0 * 30.0), 0.000000001)
+    assertNear(probabilities[2], 1.0 / (144.0 * 20.0), 0.000000001)
+    assertNear(probabilities[3], 1.0 / (144.0 * 14.0), 0.000000001)
+    assertNear(probabilities[4], 1.0 / (144.0 * 10.0), 0.000000001)
+    assertNear(probabilities[5], 1.0 / (144.0 * 7.0), 0.000000001)
+    assertNear(probabilities[6], 1.0 / (144.0 * 4.0), 0.000000001)
+    assertNear(probabilities[7], 1.0 / (144.0 * 2.0), 0.000000001)
+    assertEqual(probabilities[8], 1.0)
+
+    local settings = weatherSettings()
+    settings.weatherProbability = probabilities[8]
+    local manager = newWeatherManager(false, true)
+    local state = { lastWeatherRunning = false }
+    local result = ChangingSkies.Weather.onTenMinutes(
+        manager,
+        settings,
+        state,
+        90.0,
+        function() return 0.999999 end
+    )
+    assertEqual(result, "TRIGGERED")
+    assertEqual(manager.triggerCount, 1)
+end)
+
 test("same-slot scheduler deduplication and verified trigger", function()
     local manager = newWeatherManager(false, true)
     local state = { lastWeatherRunning = false }

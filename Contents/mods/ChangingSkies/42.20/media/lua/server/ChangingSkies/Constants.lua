@@ -27,7 +27,7 @@ Constants.WEATHER_PROBABILITIES = {
     1.0 / (144.0 * 7.0),
     1.0 / (144.0 * 4.0),
     1.0 / (144.0 * 2.0),
-    1.0 / 144.0,
+    1.0,
 }
 
 Constants.SEVERITY_BANDS = {
