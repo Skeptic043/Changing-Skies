@@ -4,6 +4,7 @@ require "ChangingSkies/Settings"
 require "ChangingSkies/State"
 require "ChangingSkies/Temperature"
 require "ChangingSkies/Weather"
+require "ChangingSkies/SnowDiagnostics"
 
 ChangingSkies = ChangingSkies or {}
 
@@ -18,12 +19,19 @@ local function onClimateTick(climateManager)
 
     local settings = ChangingSkies.Settings.read()
     local state = ChangingSkies.State.ensure(climateManager)
-    ChangingSkies.Temperature.apply(climateManager, settings)
+    local temperatureResult = ChangingSkies.Temperature.apply(climateManager, settings)
+    local worldAgeHours = GameTime.getInstance():getWorldAgeHours()
+    ChangingSkies.SnowDiagnostics.emit(
+        climateManager,
+        settings,
+        temperatureResult,
+        worldAgeHours
+    )
     ChangingSkies.Weather.reconcile(
         climateManager,
         settings,
         state,
-        GameTime.getInstance():getWorldAgeHours()
+        worldAgeHours
     )
 end
 

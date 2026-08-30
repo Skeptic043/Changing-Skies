@@ -3,14 +3,14 @@ ChangingSkies = ChangingSkies or {}
 local Constants = {}
 
 Constants.SCHEMA_VERSION = 1
-Constants.TEMPERATURE_MIN_C = -80.0
-Constants.TEMPERATURE_MAX_C = 80.0
+Constants.TEMPERATURE_MIN_C = -101.11111111111111
+Constants.TEMPERATURE_MAX_C = 93.33333333333333
 Constants.NOMINAL_AIR_MASS_SPREAD_C = 16.0
 Constants.RANDOM_SCALE = 1000000
 
 Constants.DEFAULTS = {
     enableAddedWeather = true,
-    frequency = 3,
+    frequency = 1,
     severity = 3,
     cooldownMinimumHours = 24.0,
     cooldownMaximumHours = 72.0,
@@ -20,8 +20,6 @@ Constants.DEFAULTS = {
 
 -- Per eligible ten-minute check; expected waits exclude cooldown and vanilla weather.
 Constants.WEATHER_PROBABILITIES = {
-    1.0 / (144.0 * 30.0),
-    1.0 / (144.0 * 20.0),
     1.0 / (144.0 * 14.0),
     1.0 / (144.0 * 10.0),
     1.0 / (144.0 * 7.0),

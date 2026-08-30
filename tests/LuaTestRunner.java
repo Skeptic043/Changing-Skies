@@ -69,7 +69,8 @@ public final class LuaTestRunner {
             "Settings.lua",
             "State.lua",
             "Temperature.lua",
-            "Weather.lua"
+            "Weather.lua",
+            "SnowDiagnostics.lua"
         };
 
         J2SEPlatform platform = J2SEPlatform.getInstance();

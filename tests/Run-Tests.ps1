@@ -94,11 +94,24 @@ try {
         throw "EnableAddedWeather must default to true in sandbox-options.txt"
     }
 
+    $frequencyOption = [regex]::Match(
+        $sandbox,
+        "(?s)option ChangingSkies\.AddedWeatherFrequency\s*\{(?<body>.*?)\}"
+    )
+    if (-not $frequencyOption.Success -or
+        $frequencyOption.Groups["body"].Value -notmatch "(?m)^\s*numValues\s*=\s*6," -or
+        $frequencyOption.Groups["body"].Value -notmatch "(?m)^\s*default\s*=\s*1,") {
+        throw "AddedWeatherFrequency must expose six values and default to Very Low (1)."
+    }
+
     $serverRoot = Join-Path $modRoot "media\lua\server\ChangingSkies"
     $constantsPath = Join-Path $serverRoot "Constants.lua"
     $constants = Get-Content -LiteralPath $constantsPath -Raw
     if ($constants -notmatch "(?m)^\s*enableAddedWeather\s*=\s*true,") {
         throw "EnableAddedWeather must default to true in Constants.lua"
+    }
+    if ($constants -notmatch "(?m)^\s*frequency\s*=\s*1,") {
+        throw "The internal added-weather frequency default must be Very Low (1)."
     }
 
     $translationPath = Join-Path $modRoot "media\lua\shared\Translate\EN\Sandbox.json"
@@ -120,15 +133,52 @@ try {
         throw "Enable Temperature Adjustment tooltip does not match the approved target-temperature copy."
     }
 
+    $frequencyValues = @("Very Low", "Low", "Normal", "High", "Very High", "Insane")
+    for ($index = 1; $index -le $frequencyValues.Count; $index++) {
+        $key = "Sandbox_ChangingSkies_Frequency_option" + $index
+        if ($translations.PSObject.Properties[$key].Value -ne $frequencyValues[$index - 1]) {
+            throw "Added Weather Frequency option $index does not match the approved six-value order."
+        }
+    }
+    foreach ($retiredIndex in 7, 8) {
+        $key = "Sandbox_ChangingSkies_Frequency_option" + $retiredIndex
+        if ($null -ne $translations.PSObject.Properties[$key]) {
+            throw "Retired Added Weather Frequency option $retiredIndex must not be translated."
+        }
+    }
+
+    $seasonTitles = [ordered]@{
+        Spring = "Spring Temperature Target Range"
+        Summer = "Summer Temperature Target Range"
+        Fall = "Fall Temperature Target Range"
+        Winter = "Winter Temperature Target Range"
+    }
+    foreach ($season in $seasonTitles.Keys) {
+        $titleKey = "Sandbox_Title_ChangingSkies_" + $season + "TemperatureTargetRange"
+        if ($translations.PSObject.Properties[$titleKey].Value -ne $seasonTitles[$season]) {
+            throw "$season temperature target title does not match the approved copy."
+        }
+        $coldOption = [regex]::Match(
+            $sandbox,
+            "(?s)option ChangingSkies\." + $season + "ColdTargetF\s*\{(?<body>.*?)\}"
+        )
+        $expectedTitle = "(?m)^\s*title\s*=\s*ChangingSkies_" +
+            $season + "TemperatureTargetRange,"
+        if (-not $coldOption.Success -or
+            $coldOption.Groups["body"].Value -notmatch $expectedTitle) {
+            throw "$season cold target is missing its stock sandbox title assignment."
+        }
+    }
+
     $targetOptions = @(
-        @("SpringColdTargetF", "37.5", "Spring Cold Temperature (F)", "Cold target for spring (March-May). Vanilla Normal reference: 37.5 F. Ordinary daily and weather variation can move beyond it."),
-        @("SpringWarmTargetF", "66.3", "Spring Warm Temperature (F)", "Warm target for spring (March-May). Vanilla Normal reference: 66.3 F. Ordinary daily and weather variation can move beyond it."),
-        @("SummerColdTargetF", "60.2", "Summer Cold Temperature (F)", "Cold target for summer (June-August). Vanilla Normal reference: 60.2 F. Ordinary daily and weather variation can move beyond it."),
-        @("SummerWarmTargetF", "89.0", "Summer Warm Temperature (F)", "Warm target for summer (June-August). Vanilla Normal reference: 89.0 F. Ordinary daily and weather variation can move beyond it."),
-        @("FallColdTargetF", "42.4", "Fall Cold Temperature (F)", "Cold target for fall (September-November). Vanilla Normal reference: 42.4 F. Ordinary daily and weather variation can move beyond it."),
-        @("FallWarmTargetF", "71.2", "Fall Warm Temperature (F)", "Warm target for fall (September-November). Vanilla Normal reference: 71.2 F. Ordinary daily and weather variation can move beyond it."),
-        @("WinterColdTargetF", "19.9", "Winter Cold Temperature (F)", "Cold target for winter (December-February). Vanilla Normal reference: 19.9 F. Ordinary daily and weather variation can move beyond it."),
-        @("WinterWarmTargetF", "48.7", "Winter Warm Temperature (F)", "Warm target for winter (December-February). Vanilla Normal reference: 48.7 F. Ordinary daily and weather variation can move beyond it.")
+        @("SpringColdTargetF", "37.5", "Cold", "Cold target for spring (March-May). Vanilla Normal reference: 37.5 F. Ordinary daily and weather variation can move beyond it."),
+        @("SpringWarmTargetF", "66.3", "Warm", "Warm target for spring (March-May). Vanilla Normal reference: 66.3 F. Ordinary daily and weather variation can move beyond it."),
+        @("SummerColdTargetF", "60.2", "Cold", "Cold target for summer (June-August). Vanilla Normal reference: 60.2 F. Ordinary daily and weather variation can move beyond it."),
+        @("SummerWarmTargetF", "89.0", "Warm", "Warm target for summer (June-August). Vanilla Normal reference: 89.0 F. Ordinary daily and weather variation can move beyond it."),
+        @("FallColdTargetF", "42.4", "Cold", "Cold target for fall (September-November). Vanilla Normal reference: 42.4 F. Ordinary daily and weather variation can move beyond it."),
+        @("FallWarmTargetF", "71.2", "Warm", "Warm target for fall (September-November). Vanilla Normal reference: 71.2 F. Ordinary daily and weather variation can move beyond it."),
+        @("WinterColdTargetF", "19.9", "Cold", "Cold target for winter (December-February). Vanilla Normal reference: 19.9 F. Ordinary daily and weather variation can move beyond it."),
+        @("WinterWarmTargetF", "48.7", "Warm", "Warm target for winter (December-February). Vanilla Normal reference: 48.7 F. Ordinary daily and weather variation can move beyond it.")
     )
     foreach ($target in $targetOptions) {
         $id = $target[0]
@@ -138,7 +188,7 @@ try {
             "(?s)option ChangingSkies\." + [regex]::Escape($id) + "\s*\{(?<body>.*?)\}"
         )
         if (-not $option.Success -or
-            $option.Groups["body"].Value -notmatch "(?m)^\s*min\s*=\s*-100," -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*min\s*=\s*-150," -or
             $option.Groups["body"].Value -notmatch "(?m)^\s*max\s*=\s*200," -or
             $option.Groups["body"].Value -notmatch
                 ("(?m)^\s*default\s*=\s*" + [regex]::Escape($default) + ",")) {
@@ -167,7 +217,29 @@ try {
         throw "Bootstrap is missing its authoritative not-isClient guard."
     }
 
-    Write-Host "Static checks passed: mod metadata, exact 15-option target schema, eight target defaults/ranges/tooltips, retired adjustment declarations absent, synchronized added-weather defaults, authority guard, and forbidden-pattern scan."
+    $diagnosticsPath = Join-Path $serverRoot "SnowDiagnostics.lua"
+    $diagnostics = Get-Content -LiteralPath $diagnosticsPath -Raw
+    $diagnosticForbidden = Select-String -LiteralPath $diagnosticsPath -Pattern @(
+        "forceSnow",
+        "setSnowTarget",
+        ":set[A-Z]",
+        "triggerCustomWeather",
+        "triggerCustomWeatherStage",
+        "setCurSeason"
+    )
+    if ($diagnosticForbidden) {
+        throw "SnowDiagnostics.lua contains a forbidden climate, weather, snow, or season mutation."
+    }
+    if ($bootstrap -notmatch 'require "ChangingSkies/SnowDiagnostics"' -or
+        $bootstrap -notmatch "ChangingSkies\.SnowDiagnostics\.emit\(") {
+        throw "Bootstrap must invoke SnowDiagnostics only from the authoritative climate-tick path."
+    }
+    if ($diagnostics -notmatch "previousCompletedTick\.composedSnow=" -or
+        $diagnostics -notmatch "newTick\.csRequestedSnowTarget=") {
+        throw "Snow diagnostics are missing the explicit previous/new tick labels."
+    }
+
+    Write-Host "Static checks passed: parsed 15 sandbox options; six ordered frequency translations with Very Low default; four stock seasonal titles; eight Cold/Warm targets with -150 F to 200 F ranges, defaults, and tooltips; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

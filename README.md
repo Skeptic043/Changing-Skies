@@ -14,9 +14,9 @@ Added weather is enabled by default with a conservative frequency preset and a 2
 
 ## Current validation boundary
 
-The standalone tests compile and execute the Lua modules with mocked Build 42.20 climate objects. They validate settings fallback, temperature math/composition, ownership relinquishment, scheduler deduplication, non-overlap, trigger verification, and cooldown transitions.
+The standalone tests compile and execute the Lua modules with mocked Build 42.20 climate objects. They validate settings fallback, temperature math/composition, ownership relinquishment, scheduler deduplication, non-overlap, trigger verification, cooldown transitions, and read-only snow diagnostics.
 
-A first Build 42.20.4 SP pass confirmed clean loading, strong seasonal temperature changes with retained daily variation, immediate live enable/disable after the settings-refresh correction, snow visuals, thunder during snow, weather/temperature persistence across a menu reload, generated weather starts, and configured cooldowns. Ground snow did not visibly accumulate during one long sub-zero storm. The new player-facing target-temperature fields still need a focused live pass. Multiplayer, join-in-progress, accumulation, and melt behavior remain release acceptance gates.
+A Build 42.20.4 SP pass confirmed clean loading, strong seasonal temperature changes with retained daily variation, immediate live sandbox-setting changes, snow visuals, thunder during snow, weather/temperature persistence across a menu reload, generated weather starts, and configured cooldowns. The test save also confirmed vanilla numeric snow accumulation during an Early Summer storm; Build 42.20.4's default FBO ground-snow renderer suppresses that accumulated snow outside vanilla Winter. Winter ground rendering and melt behavior, multiplayer, and join-in-progress remain release acceptance gates.
 
 Run the standalone suite from PowerShell:
 

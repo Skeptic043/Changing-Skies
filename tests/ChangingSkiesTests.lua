@@ -18,6 +18,13 @@ local function assertNear(actual, expected, tolerance, message)
     end
 end
 
+local function assertContains(actual, expected, message)
+    if string.find(actual, expected, 1, true) == nil then
+        fail((message or "text not found") .. ": expected " .. tostring(expected) ..
+            " in " .. tostring(actual))
+    end
+end
+
 local function test(name, callback)
     callback()
     testsRun = testsRun + 1
@@ -130,6 +137,122 @@ local function newWeatherManager(initiallyRunning, startsWhenTriggered)
     return manager, period
 end
 
+local function newSnowDiagnosticManager(options)
+    local period = { running = options.weatherRunning == true }
+    function period:isRunning() return self.running end
+    local season = { seasonFive = options.seasonFive == true }
+    function season:isSeason(seasonId)
+        return seasonId == 5 and self.seasonFive
+    end
+    local manager = {}
+    function manager:getPrecipitationIsSnow() return options.composedSnow end
+    function manager:getPrecipitationIntensity() return options.precipitationIntensity end
+    function manager:getSnowStrength() return options.snowStrength end
+    function manager:getSnowFracNow() return options.snowFracNow end
+    function manager:getSeason() return season end
+    function manager:getWeatherPeriod() return period end
+    return manager
+end
+
+test("snow diagnostics stay silent when debug logging is off", function()
+    ChangingSkies.SnowDiagnostics.resetForTests()
+    local emitted = {}
+    local previousDebug = ChangingSkies.Log.debug
+    ChangingSkies.Log.debug = function(message) emitted[#emitted + 1] = message end
+    local line = ChangingSkies.SnowDiagnostics.emit(
+        {},
+        { debugLogging = false },
+        { applied = true, correctedTemperature = -5.0 },
+        100.0
+    )
+    ChangingSkies.Log.debug = previousDebug
+    assertEqual(line, nil)
+    assertEqual(#emitted, 0)
+end)
+
+test("snow diagnostics report all fields once per ten-minute slot", function()
+    ChangingSkies.SnowDiagnostics.resetForTests()
+    local previousGetCell = getCell
+    local cell = {}
+    function cell:getSnowTarget() return 42 end
+    getCell = function() return cell end
+    local emitted = {}
+    local previousDebug = ChangingSkies.Log.debug
+    ChangingSkies.Log.debug = function(message) emitted[#emitted + 1] = message end
+    local manager = newSnowDiagnosticManager({
+        composedSnow = true,
+        precipitationIntensity = 0.75,
+        snowStrength = 0.6,
+        snowFracNow = 0.4,
+        seasonFive = true,
+        weatherRunning = true,
+    })
+    local first = ChangingSkies.SnowDiagnostics.emit(
+        manager,
+        { debugLogging = true },
+        { applied = true, correctedTemperature = -4.5 },
+        120.0
+    )
+    local duplicate = ChangingSkies.SnowDiagnostics.emit(
+        manager,
+        { debugLogging = true },
+        { applied = true, correctedTemperature = -4.5 },
+        120.1
+    )
+    ChangingSkies.SnowDiagnostics.emit(
+        manager,
+        { debugLogging = true },
+        { applied = true, correctedTemperature = -4.5 },
+        120.2
+    )
+    ChangingSkies.Log.debug = previousDebug
+    getCell = previousGetCell
+
+    assertEqual(first,
+        "SnowDiag previousCompletedTick.composedSnow=true " ..
+        "previousCompletedTick.precipitationIntensity=0.75 " ..
+        "previousCompletedTick.snowStrength=0.6 " ..
+        "previousCompletedTick.snowFracNow=0.4 " ..
+        "previousCompletedTick.cellSnowTarget=42 " ..
+        "previousCompletedTick.season5GroundRendererEligible=true " ..
+        "previousCompletedTick.weatherPeriodRunning=true " ..
+        "newTick.csTemperatureStatus=applied " ..
+        "newTick.csCorrectedTemperatureC=-4.5 " ..
+        "newTick.csRequestedSnowTarget=true")
+    assertEqual(duplicate, nil)
+    assertEqual(#emitted, 2)
+end)
+
+test("snow diagnostics safely label an unavailable cell", function()
+    ChangingSkies.SnowDiagnostics.resetForTests()
+    local previousGetCell = getCell
+    getCell = nil
+    local emitted = {}
+    local previousDebug = ChangingSkies.Log.debug
+    ChangingSkies.Log.debug = function(message) emitted[#emitted + 1] = message end
+    local line = ChangingSkies.SnowDiagnostics.emit(
+        newSnowDiagnosticManager({
+            composedSnow = false,
+            precipitationIntensity = 0.0,
+            snowStrength = 0.0,
+            snowFracNow = 0.0,
+            seasonFive = false,
+            weatherRunning = false,
+        }),
+        { debugLogging = true },
+        { applied = false, reason = "admin" },
+        200.0
+    )
+    ChangingSkies.Log.debug = previousDebug
+    getCell = previousGetCell
+
+    assertContains(line, "previousCompletedTick.cellSnowTarget=unavailable")
+    assertContains(line, "newTick.csTemperatureStatus=relinquished:admin")
+    assertContains(line, "newTick.csCorrectedTemperatureC=unavailable")
+    assertContains(line, "newTick.csRequestedSnowTarget=unavailable")
+    assertEqual(#emitted, 1)
+end)
+
 test("added-weather fallback default is enabled", function()
     assertEqual(ChangingSkies.Constants.DEFAULTS.enableAddedWeather, true)
 end)
@@ -176,7 +299,7 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
     }
     local live = sandboxOptions({
         ["ChangingSkies.EnableAddedWeather"] = true,
-        ["ChangingSkies.AddedWeatherFrequency"] = 8,
+        ["ChangingSkies.AddedWeatherFrequency"] = 6,
         ["ChangingSkies.AddedWeatherSeverity"] = 6,
         ["ChangingSkies.CooldownMinimumHours"] = 0.0,
         ["ChangingSkies.CooldownMaximumHours"] = 5.0,
@@ -195,7 +318,7 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
 
     local settings = ChangingSkies.Settings.read()
     assertEqual(settings.enableAddedWeather, true)
-    assertEqual(settings.frequency, 8)
+    assertEqual(settings.frequency, 6)
     assertEqual(settings.severity, 6)
     assertEqual(settings.cooldownMinimumHours, 0.0)
     assertEqual(settings.cooldownMaximumHours, 5.0)
@@ -228,13 +351,13 @@ test("missing live options fall back per option to SandboxVars", function()
         },
     }
     local live = sandboxOptions({
-        ["ChangingSkies.AddedWeatherFrequency"] = 8,
+        ["ChangingSkies.AddedWeatherFrequency"] = 6,
     })
     getSandboxOptions = function() return live end
 
     local settings = ChangingSkies.Settings.read()
     assertEqual(settings.enableAddedWeather, false)
-    assertEqual(settings.frequency, 8)
+    assertEqual(settings.frequency, 6)
     assertEqual(settings.severity, 4)
     assertEqual(settings.cooldownMinimumHours, 7.0)
     assertEqual(settings.cooldownMaximumHours, 9.0)
@@ -249,7 +372,7 @@ test("absent live sandbox API falls back to SandboxVars", function()
     SandboxVars = {
         ChangingSkies = {
             EnableAddedWeather = true,
-            AddedWeatherFrequency = 7,
+            AddedWeatherFrequency = 5,
             AddedWeatherSeverity = 5,
             CooldownMinimumHours = 1.0,
             CooldownMaximumHours = 3.0,
@@ -260,7 +383,7 @@ test("absent live sandbox API falls back to SandboxVars", function()
 
     local settings = ChangingSkies.Settings.read()
     assertEqual(settings.enableAddedWeather, true)
-    assertEqual(settings.frequency, 7)
+    assertEqual(settings.frequency, 5)
     assertEqual(settings.severity, 5)
     assertEqual(settings.cooldownMinimumHours, 1.0)
     assertEqual(settings.cooldownMaximumHours, 3.0)
@@ -345,7 +468,7 @@ test("target-pair validation preserves the last valid targets", function()
     local invalid = ChangingSkies.Settings.readFromTable({
         SpringColdTargetF = 100.0,
         SpringWarmTargetF = 50.0,
-        AddedWeatherFrequency = 999,
+        AddedWeatherFrequency = 8,
         AddedWeatherSeverity = -1,
         CooldownMinimumHours = 10.0,
         CooldownMaximumHours = 2.0,
@@ -396,17 +519,22 @@ end)
 test("temperature bounds and corrected snow boolean", function()
     ChangingSkies.Temperature.resetOwnershipForTests()
     local hotManager, hotFloat = newTemperatureManager({
-        vanillaTemperature = 79.0,
+        vanillaTemperature = 90.0,
         airMass = 0.0,
     })
     ChangingSkies.Temperature.apply(hotManager, temperatureSettings(18.0, 18.0))
-    assertEqual(hotFloat.moddedValue, 80.0)
+    assertNear(hotFloat.moddedValue, (200.0 - 32.0) * (5.0 / 9.0), 0.000000001)
 
-    local coldManager, _, snowBool = newTemperatureManager({
-        vanillaTemperature = 5.0,
+    local coldManager, coldFloat, snowBool = newTemperatureManager({
+        vanillaTemperature = -100.0,
         airMass = 0.0,
     })
     ChangingSkies.Temperature.apply(coldManager, temperatureSettings(-18.0, -18.0))
+    assertNear(coldFloat.moddedValue, (-150.0 - 32.0) * (5.0 / 9.0), 0.000000001)
+    assertNear(ChangingSkies.Constants.TEMPERATURE_MIN_C,
+        (-150.0 - 32.0) * (5.0 / 9.0), 0.000000001)
+    assertNear(ChangingSkies.Constants.TEMPERATURE_MAX_C,
+        (200.0 - 32.0) * (5.0 / 9.0), 0.000000001)
     assertEqual(snowBool.enableModded, true)
     assertEqual(snowBool.moddedValue, true)
 end)
@@ -428,17 +556,17 @@ end)
 
 test("Insane frequency triggers on the first eligible roll", function()
     local probabilities = ChangingSkies.Constants.WEATHER_PROBABILITIES
-    assertNear(probabilities[1], 1.0 / (144.0 * 30.0), 0.000000001)
-    assertNear(probabilities[2], 1.0 / (144.0 * 20.0), 0.000000001)
-    assertNear(probabilities[3], 1.0 / (144.0 * 14.0), 0.000000001)
-    assertNear(probabilities[4], 1.0 / (144.0 * 10.0), 0.000000001)
-    assertNear(probabilities[5], 1.0 / (144.0 * 7.0), 0.000000001)
-    assertNear(probabilities[6], 1.0 / (144.0 * 4.0), 0.000000001)
-    assertNear(probabilities[7], 1.0 / (144.0 * 2.0), 0.000000001)
-    assertEqual(probabilities[8], 1.0)
+    assertEqual(#probabilities, 6)
+    assertEqual(ChangingSkies.Constants.DEFAULTS.frequency, 1)
+    assertNear(probabilities[1], 1.0 / (144.0 * 14.0), 0.000000001)
+    assertNear(probabilities[2], 1.0 / (144.0 * 10.0), 0.000000001)
+    assertNear(probabilities[3], 1.0 / (144.0 * 7.0), 0.000000001)
+    assertNear(probabilities[4], 1.0 / (144.0 * 4.0), 0.000000001)
+    assertNear(probabilities[5], 1.0 / (144.0 * 2.0), 0.000000001)
+    assertEqual(probabilities[6], 1.0)
 
     local settings = weatherSettings()
-    settings.weatherProbability = probabilities[8]
+    settings.weatherProbability = probabilities[6]
     local manager = newWeatherManager(false, true)
     local state = { lastWeatherRunning = false }
     local result = ChangingSkies.Weather.onTenMinutes(
