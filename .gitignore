@@ -1,0 +1,18 @@
+# Local orchestration and agent material
+AGENTS.md
+.agents/
+.project/
+
+# Test/build residue
+tests/.build/
+*.class
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime logs and local saves
+*.log
+

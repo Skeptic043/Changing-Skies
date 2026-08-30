@@ -1,0 +1,131 @@
+VERSION = 1,
+
+option ChangingSkies.EnableAddedWeather {
+    type = boolean,
+    default = false,
+    page = ChangingSkies,
+    translation = ChangingSkies_EnableAddedWeather,
+}
+
+option ChangingSkies.AddedWeatherFrequency {
+    type = enum,
+    numValues = 8,
+    default = 3,
+    page = ChangingSkies,
+    translation = ChangingSkies_AddedWeatherFrequency,
+    valueTranslation = ChangingSkies_Frequency,
+}
+
+option ChangingSkies.AddedWeatherSeverity {
+    type = enum,
+    numValues = 6,
+    default = 3,
+    page = ChangingSkies,
+    translation = ChangingSkies_AddedWeatherSeverity,
+    valueTranslation = ChangingSkies_Severity,
+}
+
+option ChangingSkies.CooldownMinimumHours {
+    type = double,
+    min = 0,
+    max = 720,
+    default = 24,
+    page = ChangingSkies,
+    translation = ChangingSkies_CooldownMinimumHours,
+}
+
+option ChangingSkies.CooldownMaximumHours {
+    type = double,
+    min = 0,
+    max = 720,
+    default = 72,
+    page = ChangingSkies,
+    translation = ChangingSkies_CooldownMaximumHours,
+}
+
+option ChangingSkies.EnableTemperatureAdjustment {
+    type = boolean,
+    default = false,
+    page = ChangingSkies,
+    translation = ChangingSkies_EnableTemperatureAdjustment,
+}
+
+option ChangingSkies.SpringColdEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_SpringColdEndAdjustmentF,
+}
+
+option ChangingSkies.SpringWarmEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_SpringWarmEndAdjustmentF,
+}
+
+option ChangingSkies.SummerColdEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_SummerColdEndAdjustmentF,
+}
+
+option ChangingSkies.SummerWarmEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_SummerWarmEndAdjustmentF,
+}
+
+option ChangingSkies.FallColdEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_FallColdEndAdjustmentF,
+}
+
+option ChangingSkies.FallWarmEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_FallWarmEndAdjustmentF,
+}
+
+option ChangingSkies.WinterColdEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_WinterColdEndAdjustmentF,
+}
+
+option ChangingSkies.WinterWarmEndAdjustmentF {
+    type = double,
+    min = -144,
+    max = 144,
+    default = 0,
+    page = ChangingSkies,
+    translation = ChangingSkies_WinterWarmEndAdjustmentF,
+}
+
+option ChangingSkies.DebugLogging {
+    type = boolean,
+    default = false,
+    page = ChangingSkies,
+    translation = ChangingSkies_DebugLogging,
+}
+
