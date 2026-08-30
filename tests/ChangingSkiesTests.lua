@@ -125,6 +125,146 @@ local function newWeatherManager(initiallyRunning, startsWhenTriggered)
     return manager, period
 end
 
+test("added-weather fallback default is enabled", function()
+    assertEqual(ChangingSkies.Constants.DEFAULTS.enableAddedWeather, true)
+end)
+
+local function sandboxOption(value)
+    local option = { value = value }
+    function option:getValue() return self.value end
+    return option
+end
+
+local function sandboxOptions(values)
+    local options = { values = values }
+    function options:getOptionByName(name)
+        local value = self.values[name]
+        if value == nil then
+            return nil
+        end
+        return sandboxOption(value)
+    end
+    return options
+end
+
+test("live sandbox options replace the stale SandboxVars snapshot", function()
+    local previousSandboxVars = SandboxVars
+    local previousGetSandboxOptions = getSandboxOptions
+    SandboxVars = {
+        ChangingSkies = {
+            EnableAddedWeather = false,
+            AddedWeatherFrequency = 2,
+            AddedWeatherSeverity = 2,
+            CooldownMinimumHours = 24.0,
+            CooldownMaximumHours = 72.0,
+            EnableTemperatureAdjustment = true,
+            SpringColdEndAdjustmentF = 0.0,
+            SpringWarmEndAdjustmentF = 0.0,
+            SummerColdEndAdjustmentF = 0.0,
+            SummerWarmEndAdjustmentF = 0.0,
+            FallColdEndAdjustmentF = 0.0,
+            FallWarmEndAdjustmentF = 0.0,
+            WinterColdEndAdjustmentF = 0.0,
+            WinterWarmEndAdjustmentF = 0.0,
+            DebugLogging = false,
+        },
+    }
+    local live = sandboxOptions({
+        ["ChangingSkies.EnableAddedWeather"] = true,
+        ["ChangingSkies.AddedWeatherFrequency"] = 8,
+        ["ChangingSkies.AddedWeatherSeverity"] = 6,
+        ["ChangingSkies.CooldownMinimumHours"] = 0.0,
+        ["ChangingSkies.CooldownMaximumHours"] = 5.0,
+        ["ChangingSkies.EnableTemperatureAdjustment"] = false,
+        ["ChangingSkies.SpringColdEndAdjustmentF"] = -1.0,
+        ["ChangingSkies.SpringWarmEndAdjustmentF"] = 1.0,
+        ["ChangingSkies.SummerColdEndAdjustmentF"] = -2.0,
+        ["ChangingSkies.SummerWarmEndAdjustmentF"] = 2.0,
+        ["ChangingSkies.FallColdEndAdjustmentF"] = -3.0,
+        ["ChangingSkies.FallWarmEndAdjustmentF"] = 3.0,
+        ["ChangingSkies.WinterColdEndAdjustmentF"] = -4.0,
+        ["ChangingSkies.WinterWarmEndAdjustmentF"] = 4.0,
+        ["ChangingSkies.DebugLogging"] = true,
+    })
+    getSandboxOptions = function() return live end
+
+    local settings = ChangingSkies.Settings.read()
+    assertEqual(settings.enableAddedWeather, true)
+    assertEqual(settings.frequency, 8)
+    assertEqual(settings.severity, 6)
+    assertEqual(settings.cooldownMinimumHours, 0.0)
+    assertEqual(settings.cooldownMaximumHours, 5.0)
+    assertEqual(settings.enableTemperatureAdjustment, false)
+    assertEqual(settings.temperatureProfiles.Spring.coldF, -1.0)
+    assertEqual(settings.temperatureProfiles.Spring.warmF, 1.0)
+    assertEqual(settings.temperatureProfiles.Summer.coldF, -2.0)
+    assertEqual(settings.temperatureProfiles.Summer.warmF, 2.0)
+    assertEqual(settings.temperatureProfiles.Fall.coldF, -3.0)
+    assertEqual(settings.temperatureProfiles.Fall.warmF, 3.0)
+    assertEqual(settings.temperatureProfiles.Winter.coldF, -4.0)
+    assertEqual(settings.temperatureProfiles.Winter.warmF, 4.0)
+    assertEqual(settings.debugLogging, true)
+
+    ChangingSkies.Log.setDebugEnabled(false)
+    SandboxVars = previousSandboxVars
+    getSandboxOptions = previousGetSandboxOptions
+end)
+
+test("missing live options fall back per option to SandboxVars", function()
+    local previousSandboxVars = SandboxVars
+    local previousGetSandboxOptions = getSandboxOptions
+    SandboxVars = {
+        ChangingSkies = {
+            EnableAddedWeather = false,
+            AddedWeatherFrequency = 2,
+            AddedWeatherSeverity = 4,
+            CooldownMinimumHours = 7.0,
+            CooldownMaximumHours = 9.0,
+        },
+    }
+    local live = sandboxOptions({
+        ["ChangingSkies.AddedWeatherFrequency"] = 8,
+    })
+    getSandboxOptions = function() return live end
+
+    local settings = ChangingSkies.Settings.read()
+    assertEqual(settings.enableAddedWeather, false)
+    assertEqual(settings.frequency, 8)
+    assertEqual(settings.severity, 4)
+    assertEqual(settings.cooldownMinimumHours, 7.0)
+    assertEqual(settings.cooldownMaximumHours, 9.0)
+
+    SandboxVars = previousSandboxVars
+    getSandboxOptions = previousGetSandboxOptions
+end)
+
+test("absent live sandbox API falls back to SandboxVars", function()
+    local previousSandboxVars = SandboxVars
+    local previousGetSandboxOptions = getSandboxOptions
+    SandboxVars = {
+        ChangingSkies = {
+            EnableAddedWeather = true,
+            AddedWeatherFrequency = 7,
+            AddedWeatherSeverity = 5,
+            CooldownMinimumHours = 1.0,
+            CooldownMaximumHours = 3.0,
+            EnableTemperatureAdjustment = false,
+        },
+    }
+    getSandboxOptions = nil
+
+    local settings = ChangingSkies.Settings.read()
+    assertEqual(settings.enableAddedWeather, true)
+    assertEqual(settings.frequency, 7)
+    assertEqual(settings.severity, 5)
+    assertEqual(settings.cooldownMinimumHours, 1.0)
+    assertEqual(settings.cooldownMaximumHours, 3.0)
+    assertEqual(settings.enableTemperatureAdjustment, false)
+
+    SandboxVars = previousSandboxVars
+    getSandboxOptions = previousGetSandboxOptions
+end)
+
 test("settings validation preserves last valid endpoints", function()
     ChangingSkies.Settings.resetValidationMemoryForTests()
     local valid = ChangingSkies.Settings.readFromTable({

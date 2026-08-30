@@ -2,7 +2,7 @@ VERSION = 1,
 
 option ChangingSkies.EnableAddedWeather {
     type = boolean,
-    default = false,
+    default = true,
     page = ChangingSkies,
     translation = ChangingSkies_EnableAddedWeather,
 }
@@ -128,4 +128,3 @@ option ChangingSkies.DebugLogging {
     page = ChangingSkies,
     translation = ChangingSkies_DebugLogging,
 }
-

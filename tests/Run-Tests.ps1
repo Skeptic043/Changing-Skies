@@ -56,10 +56,37 @@ try {
         throw "Expected 15 Changing Skies sandbox options; found $optionCount"
     }
 
-    $translationPath = Join-Path $modRoot "media\lua\shared\Translate\EN\Sandbox.json"
-    Get-Content -LiteralPath $translationPath -Raw | ConvertFrom-Json | Out-Null
+    $addedWeatherOption = [regex]::Match(
+        $sandbox,
+        "(?s)option ChangingSkies\.EnableAddedWeather\s*\{(?<body>.*?)\}"
+    )
+    if (-not $addedWeatherOption.Success -or
+        $addedWeatherOption.Groups["body"].Value -notmatch "(?m)^\s*default\s*=\s*true,") {
+        throw "EnableAddedWeather must default to true in sandbox-options.txt"
+    }
 
     $serverRoot = Join-Path $modRoot "media\lua\server\ChangingSkies"
+    $constantsPath = Join-Path $serverRoot "Constants.lua"
+    $constants = Get-Content -LiteralPath $constantsPath -Raw
+    if ($constants -notmatch "(?m)^\s*enableAddedWeather\s*=\s*true,") {
+        throw "EnableAddedWeather must default to true in Constants.lua"
+    }
+
+    $translationPath = Join-Path $modRoot "media\lua\shared\Translate\EN\Sandbox.json"
+    $translations = Get-Content -LiteralPath $translationPath -Raw | ConvertFrom-Json
+    if ($translations.Sandbox_ChangingSkies_EnableAddedWeather_tooltip -ne
+        "Allows Changing Skies to ask the vanilla weather system to generate additional weather events.") {
+        throw "Enable Added Weather tooltip does not match the approved copy."
+    }
+    if ($translations.Sandbox_ChangingSkies_AddedWeatherFrequency_tooltip -ne
+        "Controls the chance for an added weather event, rolled every 10 in-game minutes. Cooldowns and naturally occurring weather add more time between checks.") {
+        throw "Added Weather Frequency tooltip does not match the approved copy."
+    }
+    if ($translations.Sandbox_ChangingSkies_AddedWeatherSeverity_tooltip -ne
+        "Controls the strength range for an added weather event. This does not set an exact weather type or duration.") {
+        throw "Added Weather Severity tooltip does not match the approved copy."
+    }
+
     $forbidden = Select-String -Path (Join-Path $serverRoot "*.lua") -Pattern @(
         "forceSnow",
         "resetModded",
@@ -75,7 +102,7 @@ try {
         throw "Bootstrap is missing its authoritative not-isClient guard."
     }
 
-    Write-Host "Static checks passed: mod metadata, 15 sandbox options, translation JSON, authority guard, and forbidden-pattern scan."
+    Write-Host "Static checks passed: mod metadata, 15 sandbox options, synchronized added-weather defaults, approved translation JSON, authority guard, and forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

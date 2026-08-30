@@ -1,9 +1,9 @@
 {
     "Sandbox_ChangingSkies": "Changing Skies",
     "Sandbox_ChangingSkies_EnableAddedWeather": "Enable Added Weather",
-    "Sandbox_ChangingSkies_EnableAddedWeather_tooltip": "Allows Changing Skies to occasionally ask vanilla to generate an extra weather period. Vanilla weather continues normally.",
+    "Sandbox_ChangingSkies_EnableAddedWeather_tooltip": "Allows Changing Skies to ask the vanilla weather system to generate additional weather events.",
     "Sandbox_ChangingSkies_AddedWeatherFrequency": "Added Weather Frequency",
-    "Sandbox_ChangingSkies_AddedWeatherFrequency_tooltip": "Chance checked once per eligible ten in-game minutes. Cooldowns and naturally occurring weather add more time between checks.",
+    "Sandbox_ChangingSkies_AddedWeatherFrequency_tooltip": "Controls the chance for an added weather event, rolled every 10 in-game minutes. Cooldowns and naturally occurring weather add more time between checks.",
     "Sandbox_ChangingSkies_Frequency_option1": "Extremely Low",
     "Sandbox_ChangingSkies_Frequency_option2": "Insanely Low",
     "Sandbox_ChangingSkies_Frequency_option3": "Very Low",
@@ -13,7 +13,7 @@
     "Sandbox_ChangingSkies_Frequency_option7": "Very High",
     "Sandbox_ChangingSkies_Frequency_option8": "Insane",
     "Sandbox_ChangingSkies_AddedWeatherSeverity": "Added Weather Severity",
-    "Sandbox_ChangingSkies_AddedWeatherSeverity_tooltip": "Chooses a strength range for vanilla weather generation. This does not set an exact weather type or duration.",
+    "Sandbox_ChangingSkies_AddedWeatherSeverity_tooltip": "Controls the strength range for an added weather event. This does not set an exact weather type or duration.",
     "Sandbox_ChangingSkies_Severity_option1": "Very Low",
     "Sandbox_ChangingSkies_Severity_option2": "Low",
     "Sandbox_ChangingSkies_Severity_option3": "Normal",
@@ -45,4 +45,3 @@
     "Sandbox_ChangingSkies_DebugLogging": "Debug Logging",
     "Sandbox_ChangingSkies_DebugLogging_tooltip": "Writes concise scheduler and temperature diagnostics to the game log. Disabled by default."
 }
-

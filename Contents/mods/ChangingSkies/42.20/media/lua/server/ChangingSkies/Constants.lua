@@ -9,7 +9,7 @@ Constants.NOMINAL_AIR_MASS_SPREAD_C = 16.0
 Constants.RANDOM_SCALE = 1000000
 
 Constants.DEFAULTS = {
-    enableAddedWeather = false,
+    enableAddedWeather = true,
     frequency = 3,
     severity = 3,
     cooldownMinimumHours = 24.0,
@@ -49,4 +49,3 @@ Constants.SEASON_PROFILE_BY_ID = {
 }
 
 ChangingSkies.Constants = Constants
-

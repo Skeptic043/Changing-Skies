@@ -6,6 +6,24 @@ local Settings = {
     lastValidTemperaturePairs = {},
 }
 
+local OPTION_NAMES = {
+    "EnableAddedWeather",
+    "AddedWeatherFrequency",
+    "AddedWeatherSeverity",
+    "CooldownMinimumHours",
+    "CooldownMaximumHours",
+    "EnableTemperatureAdjustment",
+    "SpringColdEndAdjustmentF",
+    "SpringWarmEndAdjustmentF",
+    "SummerColdEndAdjustmentF",
+    "SummerWarmEndAdjustmentF",
+    "FallColdEndAdjustmentF",
+    "FallWarmEndAdjustmentF",
+    "WinterColdEndAdjustmentF",
+    "WinterWarmEndAdjustmentF",
+    "DebugLogging",
+}
+
 local function finiteNumber(value, fallback)
     local number = tonumber(value)
     if number == nil or number ~= number or number == math.huge or number == -math.huge then
@@ -106,7 +124,24 @@ end
 function Settings.read()
     local source = {}
     if type(SandboxVars) == "table" and type(SandboxVars.ChangingSkies) == "table" then
-        source = SandboxVars.ChangingSkies
+        for _, name in ipairs(OPTION_NAMES) do
+            source[name] = SandboxVars.ChangingSkies[name]
+        end
+    end
+
+    if type(getSandboxOptions) == "function" then
+        local sandboxOptions = getSandboxOptions()
+        if sandboxOptions ~= nil then
+            for _, name in ipairs(OPTION_NAMES) do
+                local option = sandboxOptions:getOptionByName("ChangingSkies." .. name)
+                if option ~= nil then
+                    local value = option:getValue()
+                    if value ~= nil then
+                        source[name] = value
+                    end
+                end
+            end
+        end
     end
     return Settings.readFromTable(source)
 end
@@ -121,4 +156,3 @@ function Settings.resetValidationMemoryForTests()
 end
 
 ChangingSkies.Settings = Settings
-
