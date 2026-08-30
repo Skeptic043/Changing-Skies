@@ -30,6 +30,12 @@ ClimateManager = {
     winterIsComing = false,
 }
 
+GameTime = {
+    instance = { month = 0 },
+}
+function GameTime.instance:getMonth() return self.month end
+function GameTime.getInstance() return GameTime.instance end
+
 local function newClimateFloat()
     local value = {
         enableModded = false,
@@ -62,8 +68,8 @@ local function newClimateBool()
     return value
 end
 
-local function temperatureSettings(coldF, warmF)
-    local pair = { coldF = coldF, warmF = warmF }
+local function temperatureSettings(coldDeltaF, warmDeltaF)
+    local pair = { coldDeltaF = coldDeltaF, warmDeltaF = warmDeltaF }
     return {
         enableTemperatureAdjustment = true,
         temperatureProfiles = {
@@ -94,7 +100,6 @@ local function newTemperatureManager(options)
     local manager = {}
     function manager:getClimateFloat(_) return temperatureFloat end
     function manager:getClimateBool(_) return snowBool end
-    function manager:getSeasonId() return options.seasonId or 1 end
     function manager:getClimateValuesCopy() return clean end
     function manager:getWeatherPeriod() return weatherPeriod end
     return manager, temperatureFloat, snowBool
@@ -158,14 +163,14 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
             CooldownMinimumHours = 24.0,
             CooldownMaximumHours = 72.0,
             EnableTemperatureAdjustment = true,
-            SpringColdEndAdjustmentF = 0.0,
-            SpringWarmEndAdjustmentF = 0.0,
-            SummerColdEndAdjustmentF = 0.0,
-            SummerWarmEndAdjustmentF = 0.0,
-            FallColdEndAdjustmentF = 0.0,
-            FallWarmEndAdjustmentF = 0.0,
-            WinterColdEndAdjustmentF = 0.0,
-            WinterWarmEndAdjustmentF = 0.0,
+            SpringColdTargetF = 37.5,
+            SpringWarmTargetF = 66.3,
+            SummerColdTargetF = 60.2,
+            SummerWarmTargetF = 89.0,
+            FallColdTargetF = 42.4,
+            FallWarmTargetF = 71.2,
+            WinterColdTargetF = 19.9,
+            WinterWarmTargetF = 48.7,
             DebugLogging = false,
         },
     }
@@ -176,14 +181,14 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
         ["ChangingSkies.CooldownMinimumHours"] = 0.0,
         ["ChangingSkies.CooldownMaximumHours"] = 5.0,
         ["ChangingSkies.EnableTemperatureAdjustment"] = false,
-        ["ChangingSkies.SpringColdEndAdjustmentF"] = -1.0,
-        ["ChangingSkies.SpringWarmEndAdjustmentF"] = 1.0,
-        ["ChangingSkies.SummerColdEndAdjustmentF"] = -2.0,
-        ["ChangingSkies.SummerWarmEndAdjustmentF"] = 2.0,
-        ["ChangingSkies.FallColdEndAdjustmentF"] = -3.0,
-        ["ChangingSkies.FallWarmEndAdjustmentF"] = 3.0,
-        ["ChangingSkies.WinterColdEndAdjustmentF"] = -4.0,
-        ["ChangingSkies.WinterWarmEndAdjustmentF"] = 4.0,
+        ["ChangingSkies.SpringColdTargetF"] = 36.5,
+        ["ChangingSkies.SpringWarmTargetF"] = 67.3,
+        ["ChangingSkies.SummerColdTargetF"] = 58.2,
+        ["ChangingSkies.SummerWarmTargetF"] = 91.0,
+        ["ChangingSkies.FallColdTargetF"] = 39.4,
+        ["ChangingSkies.FallWarmTargetF"] = 74.2,
+        ["ChangingSkies.WinterColdTargetF"] = 15.9,
+        ["ChangingSkies.WinterWarmTargetF"] = 52.7,
         ["ChangingSkies.DebugLogging"] = true,
     })
     getSandboxOptions = function() return live end
@@ -195,14 +200,14 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
     assertEqual(settings.cooldownMinimumHours, 0.0)
     assertEqual(settings.cooldownMaximumHours, 5.0)
     assertEqual(settings.enableTemperatureAdjustment, false)
-    assertEqual(settings.temperatureProfiles.Spring.coldF, -1.0)
-    assertEqual(settings.temperatureProfiles.Spring.warmF, 1.0)
-    assertEqual(settings.temperatureProfiles.Summer.coldF, -2.0)
-    assertEqual(settings.temperatureProfiles.Summer.warmF, 2.0)
-    assertEqual(settings.temperatureProfiles.Fall.coldF, -3.0)
-    assertEqual(settings.temperatureProfiles.Fall.warmF, 3.0)
-    assertEqual(settings.temperatureProfiles.Winter.coldF, -4.0)
-    assertEqual(settings.temperatureProfiles.Winter.warmF, 4.0)
+    assertNear(settings.temperatureProfiles.Spring.coldDeltaF, -1.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Spring.warmDeltaF, 1.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Summer.coldDeltaF, -2.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Summer.warmDeltaF, 2.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Fall.coldDeltaF, -3.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Fall.warmDeltaF, 3.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Winter.coldDeltaF, -4.0, 0.0001)
+    assertNear(settings.temperatureProfiles.Winter.warmDeltaF, 4.0, 0.0001)
     assertEqual(settings.debugLogging, true)
 
     ChangingSkies.Log.setDebugEnabled(false)
@@ -265,25 +270,88 @@ test("absent live sandbox API falls back to SandboxVars", function()
     getSandboxOptions = previousGetSandboxOptions
 end)
 
-test("settings validation preserves last valid endpoints", function()
+test("all calendar months map to their fixed seasons", function()
+    local settings = {
+        temperatureProfiles = {
+            Spring = {},
+            Summer = {},
+            Fall = {},
+            Winter = {},
+        },
+    }
+    local expected = {
+        [0] = "Winter",
+        [1] = "Winter",
+        [2] = "Spring",
+        [3] = "Spring",
+        [4] = "Spring",
+        [5] = "Summer",
+        [6] = "Summer",
+        [7] = "Summer",
+        [8] = "Fall",
+        [9] = "Fall",
+        [10] = "Fall",
+        [11] = "Winter",
+    }
+    for month = 0, 11 do
+        local _, profileName = ChangingSkies.Settings.profileForMonth(settings, month)
+        assertEqual(profileName, expected[month], "calendar month " .. tostring(month))
+    end
+end)
+
+test("vanilla Normal reference targets produce zero deltas", function()
+    ChangingSkies.Settings.resetValidationMemoryForTests()
+    local settings = ChangingSkies.Settings.readFromTable({})
+    for profileName, reference in pairs(
+        ChangingSkies.Constants.SEASON_TEMPERATURE_REFERENCES_F
+    ) do
+        local pair = settings.temperatureProfiles[profileName]
+        assertEqual(pair.coldTargetF, reference.coldF)
+        assertEqual(pair.warmTargetF, reference.warmF)
+        assertNear(pair.coldDeltaF, 0.0, 0.0001)
+        assertNear(pair.warmDeltaF, 0.0, 0.0001)
+    end
+end)
+
+test("seasonal targets translate to deltas from their references", function()
+    ChangingSkies.Settings.resetValidationMemoryForTests()
+    local settings = ChangingSkies.Settings.readFromTable({
+        SummerColdTargetF = 42.2,
+        SummerWarmTargetF = 71.0,
+    })
+    local pair = settings.temperatureProfiles.Summer
+    assertNear(pair.coldDeltaF, -18.0, 0.0001)
+    assertNear(pair.warmDeltaF, -18.0, 0.0001)
+    assertNear(
+        ChangingSkies.Temperature.calculateDeltaC(
+            pair.coldDeltaF,
+            pair.warmDeltaF,
+            0.35
+        ),
+        -10.0,
+        0.0001
+    )
+end)
+
+test("target-pair validation preserves the last valid targets", function()
     ChangingSkies.Settings.resetValidationMemoryForTests()
     local valid = ChangingSkies.Settings.readFromTable({
-        SpringColdEndAdjustmentF = -10.0,
-        SpringWarmEndAdjustmentF = 10.0,
+        SpringColdTargetF = 30.0,
+        SpringWarmTargetF = 70.0,
     })
-    assertEqual(valid.temperatureProfiles.Spring.coldF, -10.0)
-    assertEqual(valid.temperatureProfiles.Spring.warmF, 10.0)
+    assertEqual(valid.temperatureProfiles.Spring.coldTargetF, 30.0)
+    assertEqual(valid.temperatureProfiles.Spring.warmTargetF, 70.0)
 
     local invalid = ChangingSkies.Settings.readFromTable({
-        SpringColdEndAdjustmentF = 100.0,
-        SpringWarmEndAdjustmentF = -100.0,
+        SpringColdTargetF = 100.0,
+        SpringWarmTargetF = 50.0,
         AddedWeatherFrequency = 999,
         AddedWeatherSeverity = -1,
         CooldownMinimumHours = 10.0,
         CooldownMaximumHours = 2.0,
     })
-    assertEqual(invalid.temperatureProfiles.Spring.coldF, -10.0)
-    assertEqual(invalid.temperatureProfiles.Spring.warmF, 10.0)
+    assertEqual(invalid.temperatureProfiles.Spring.coldTargetF, 30.0)
+    assertEqual(invalid.temperatureProfiles.Spring.warmTargetF, 70.0)
     assertEqual(invalid.frequency, ChangingSkies.Constants.DEFAULTS.frequency)
     assertEqual(invalid.severity, ChangingSkies.Constants.DEFAULTS.severity)
     assertEqual(invalid.cooldownMinimumHours,
@@ -291,11 +359,13 @@ test("settings validation preserves last valid endpoints", function()
 
     ChangingSkies.Settings.resetValidationMemoryForTests()
     local noPrevious = ChangingSkies.Settings.readFromTable({
-        SpringColdEndAdjustmentF = 100.0,
-        SpringWarmEndAdjustmentF = -100.0,
+        SpringColdTargetF = 100.0,
+        SpringWarmTargetF = 50.0,
     })
-    assertEqual(noPrevious.temperatureProfiles.Spring.coldF, 0.0)
-    assertEqual(noPrevious.temperatureProfiles.Spring.warmF, 0.0)
+    assertEqual(noPrevious.temperatureProfiles.Spring.coldTargetF, 37.5)
+    assertEqual(noPrevious.temperatureProfiles.Spring.warmTargetF, 66.3)
+    assertNear(noPrevious.temperatureProfiles.Spring.coldDeltaF, 0.0, 0.0001)
+    assertNear(noPrevious.temperatureProfiles.Spring.warmDeltaF, 0.0, 0.0001)
 end)
 
 test("Fahrenheit delta and air-mass interpolation", function()

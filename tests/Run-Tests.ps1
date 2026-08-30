@@ -56,6 +56,35 @@ try {
         throw "Expected 15 Changing Skies sandbox options; found $optionCount"
     }
 
+    $expectedOptionIds = @(
+        "EnableAddedWeather",
+        "AddedWeatherFrequency",
+        "AddedWeatherSeverity",
+        "CooldownMinimumHours",
+        "CooldownMaximumHours",
+        "EnableTemperatureAdjustment",
+        "SpringColdTargetF",
+        "SpringWarmTargetF",
+        "SummerColdTargetF",
+        "SummerWarmTargetF",
+        "FallColdTargetF",
+        "FallWarmTargetF",
+        "WinterColdTargetF",
+        "WinterWarmTargetF",
+        "DebugLogging"
+    )
+    $declaredOptionIds = [regex]::Matches(
+        $sandbox,
+        "(?m)^option ChangingSkies\.(?<id>[A-Za-z0-9_]+)"
+    ) | ForEach-Object { $_.Groups["id"].Value }
+    $optionIdDifference = Compare-Object $expectedOptionIds $declaredOptionIds
+    if ($optionIdDifference) {
+        throw "Changing Skies sandbox option IDs do not match the expected 15-option target-temperature schema."
+    }
+    if ($sandbox -match "(?m)^option ChangingSkies\.[A-Za-z]+AdjustmentF\s*\{") {
+        throw "Retired *AdjustmentF sandbox option declarations must not be present."
+    }
+
     $addedWeatherOption = [regex]::Match(
         $sandbox,
         "(?s)option ChangingSkies\.EnableAddedWeather\s*\{(?<body>.*?)\}"
@@ -86,6 +115,42 @@ try {
         "Controls the strength range for an added weather event. This does not set an exact weather type or duration.") {
         throw "Added Weather Severity tooltip does not match the approved copy."
     }
+    if ($translations.Sandbox_ChangingSkies_EnableTemperatureAdjustment_tooltip -ne
+        "Applies the chosen seasonal temperatures while retaining vanilla daily and weather variation.") {
+        throw "Enable Temperature Adjustment tooltip does not match the approved target-temperature copy."
+    }
+
+    $targetOptions = @(
+        @("SpringColdTargetF", "37.5", "Spring Cold Temperature (F)", "Cold target for spring (March-May). Vanilla Normal reference: 37.5 F. Ordinary daily and weather variation can move beyond it."),
+        @("SpringWarmTargetF", "66.3", "Spring Warm Temperature (F)", "Warm target for spring (March-May). Vanilla Normal reference: 66.3 F. Ordinary daily and weather variation can move beyond it."),
+        @("SummerColdTargetF", "60.2", "Summer Cold Temperature (F)", "Cold target for summer (June-August). Vanilla Normal reference: 60.2 F. Ordinary daily and weather variation can move beyond it."),
+        @("SummerWarmTargetF", "89.0", "Summer Warm Temperature (F)", "Warm target for summer (June-August). Vanilla Normal reference: 89.0 F. Ordinary daily and weather variation can move beyond it."),
+        @("FallColdTargetF", "42.4", "Fall Cold Temperature (F)", "Cold target for fall (September-November). Vanilla Normal reference: 42.4 F. Ordinary daily and weather variation can move beyond it."),
+        @("FallWarmTargetF", "71.2", "Fall Warm Temperature (F)", "Warm target for fall (September-November). Vanilla Normal reference: 71.2 F. Ordinary daily and weather variation can move beyond it."),
+        @("WinterColdTargetF", "19.9", "Winter Cold Temperature (F)", "Cold target for winter (December-February). Vanilla Normal reference: 19.9 F. Ordinary daily and weather variation can move beyond it."),
+        @("WinterWarmTargetF", "48.7", "Winter Warm Temperature (F)", "Warm target for winter (December-February). Vanilla Normal reference: 48.7 F. Ordinary daily and weather variation can move beyond it.")
+    )
+    foreach ($target in $targetOptions) {
+        $id = $target[0]
+        $default = $target[1]
+        $option = [regex]::Match(
+            $sandbox,
+            "(?s)option ChangingSkies\." + [regex]::Escape($id) + "\s*\{(?<body>.*?)\}"
+        )
+        if (-not $option.Success -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*min\s*=\s*-100," -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*max\s*=\s*200," -or
+            $option.Groups["body"].Value -notmatch
+                ("(?m)^\s*default\s*=\s*" + [regex]::Escape($default) + ",")) {
+            throw "$id is missing its approved range or vanilla Normal default."
+        }
+        $labelKey = "Sandbox_ChangingSkies_" + $id
+        $tooltipKey = $labelKey + "_tooltip"
+        if ($translations.PSObject.Properties[$labelKey].Value -ne $target[2] -or
+            $translations.PSObject.Properties[$tooltipKey].Value -ne $target[3]) {
+            throw "$id label or tooltip does not match the approved target-temperature copy."
+        }
+    }
 
     $forbidden = Select-String -Path (Join-Path $serverRoot "*.lua") -Pattern @(
         "forceSnow",
@@ -102,7 +167,7 @@ try {
         throw "Bootstrap is missing its authoritative not-isClient guard."
     }
 
-    Write-Host "Static checks passed: mod metadata, 15 sandbox options, synchronized added-weather defaults, approved translation JSON, authority guard, and forbidden-pattern scan."
+    Write-Host "Static checks passed: mod metadata, exact 15-option target schema, eight target defaults/ranges/tooltips, retired adjustment declarations absent, synchronized added-weather defaults, authority guard, and forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

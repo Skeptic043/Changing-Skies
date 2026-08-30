@@ -39,13 +39,27 @@ Constants.SEVERITY_BANDS = {
     { minimum = 0.91, maximum = 1.00 },
 }
 
-Constants.SEASON_PROFILE_BY_ID = {
-    [0] = "Spring",
-    [1] = "Spring",
-    [2] = "Summer",
-    [3] = "Summer",
-    [4] = "Fall",
-    [5] = "Winter",
+Constants.SEASON_TEMPERATURE_REFERENCES_F = {
+    Spring = { coldF = 37.5, warmF = 66.3 },
+    Summer = { coldF = 60.2, warmF = 89.0 },
+    Fall = { coldF = 42.4, warmF = 71.2 },
+    Winter = { coldF = 19.9, warmF = 48.7 },
+}
+
+-- GameTime months are zero-based: January is 0 and December is 11.
+Constants.SEASON_PROFILE_BY_MONTH = {
+    [0] = "Winter",
+    [1] = "Winter",
+    [2] = "Spring",
+    [3] = "Spring",
+    [4] = "Spring",
+    [5] = "Summer",
+    [6] = "Summer",
+    [7] = "Summer",
+    [8] = "Fall",
+    [9] = "Fall",
+    [10] = "Fall",
+    [11] = "Winter",
 }
 
 ChangingSkies.Constants = Constants

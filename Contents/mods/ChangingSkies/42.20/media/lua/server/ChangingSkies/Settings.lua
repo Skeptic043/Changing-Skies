@@ -13,14 +13,14 @@ local OPTION_NAMES = {
     "CooldownMinimumHours",
     "CooldownMaximumHours",
     "EnableTemperatureAdjustment",
-    "SpringColdEndAdjustmentF",
-    "SpringWarmEndAdjustmentF",
-    "SummerColdEndAdjustmentF",
-    "SummerWarmEndAdjustmentF",
-    "FallColdEndAdjustmentF",
-    "FallWarmEndAdjustmentF",
-    "WinterColdEndAdjustmentF",
-    "WinterWarmEndAdjustmentF",
+    "SpringColdTargetF",
+    "SpringWarmTargetF",
+    "SummerColdTargetF",
+    "SummerWarmTargetF",
+    "FallColdTargetF",
+    "FallWarmTargetF",
+    "WinterColdTargetF",
+    "WinterWarmTargetF",
     "DebugLogging",
 }
 
@@ -41,30 +41,36 @@ local function integerInRange(value, minimum, maximum, fallback)
     return number
 end
 
-local function validatePair(profile, coldF, warmF)
-    local coldC = coldF * 5.0 / 9.0
-    local warmC = warmF * 5.0 / 9.0
-    if Constants.NOMINAL_AIR_MASS_SPREAD_C + warmC - coldC > 0.0 then
-        local pair = { coldF = coldF, warmF = warmF }
+local function validatePair(profile, coldTargetF, warmTargetF)
+    if warmTargetF > coldTargetF then
+        local pair = { coldTargetF = coldTargetF, warmTargetF = warmTargetF }
         Settings.lastValidTemperaturePairs[profile] = pair
         return pair
     end
 
     Log.once(
         "invalid-temperature-" .. profile,
-        "Invalid " .. profile .. " temperature endpoints; preserving the last valid pair or 0/0."
+        "Invalid " .. profile .. " temperature targets; preserving the last valid pair or vanilla references."
     )
     local previous = Settings.lastValidTemperaturePairs[profile]
     if previous then
-        return { coldF = previous.coldF, warmF = previous.warmF }
+        return {
+            coldTargetF = previous.coldTargetF,
+            warmTargetF = previous.warmTargetF,
+        }
     end
-    return { coldF = 0.0, warmF = 0.0 }
+    local reference = Constants.SEASON_TEMPERATURE_REFERENCES_F[profile]
+    return { coldTargetF = reference.coldF, warmTargetF = reference.warmF }
 end
 
 local function readPair(source, profile)
-    local cold = finiteNumber(source[profile .. "ColdEndAdjustmentF"], 0.0)
-    local warm = finiteNumber(source[profile .. "WarmEndAdjustmentF"], 0.0)
-    return validatePair(profile, cold, warm)
+    local reference = Constants.SEASON_TEMPERATURE_REFERENCES_F[profile]
+    local cold = finiteNumber(source[profile .. "ColdTargetF"], reference.coldF)
+    local warm = finiteNumber(source[profile .. "WarmTargetF"], reference.warmF)
+    local pair = validatePair(profile, cold, warm)
+    pair.coldDeltaF = pair.coldTargetF - reference.coldF
+    pair.warmDeltaF = pair.warmTargetF - reference.warmF
+    return pair
 end
 
 function Settings.readFromTable(source)
@@ -146,8 +152,8 @@ function Settings.read()
     return Settings.readFromTable(source)
 end
 
-function Settings.profileForSeason(settings, seasonId)
-    local profileName = Constants.SEASON_PROFILE_BY_ID[seasonId] or "Spring"
+function Settings.profileForMonth(settings, month)
+    local profileName = Constants.SEASON_PROFILE_BY_MONTH[month] or "Winter"
     return settings.temperatureProfiles[profileName], profileName
 end
 

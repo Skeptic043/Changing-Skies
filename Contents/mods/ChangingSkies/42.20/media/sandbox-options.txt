@@ -50,76 +50,76 @@ option ChangingSkies.EnableTemperatureAdjustment {
     translation = ChangingSkies_EnableTemperatureAdjustment,
 }
 
-option ChangingSkies.SpringColdEndAdjustmentF {
+option ChangingSkies.SpringColdTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 37.5,
     page = ChangingSkies,
-    translation = ChangingSkies_SpringColdEndAdjustmentF,
+    translation = ChangingSkies_SpringColdTargetF,
 }
 
-option ChangingSkies.SpringWarmEndAdjustmentF {
+option ChangingSkies.SpringWarmTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 66.3,
     page = ChangingSkies,
-    translation = ChangingSkies_SpringWarmEndAdjustmentF,
+    translation = ChangingSkies_SpringWarmTargetF,
 }
 
-option ChangingSkies.SummerColdEndAdjustmentF {
+option ChangingSkies.SummerColdTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 60.2,
     page = ChangingSkies,
-    translation = ChangingSkies_SummerColdEndAdjustmentF,
+    translation = ChangingSkies_SummerColdTargetF,
 }
 
-option ChangingSkies.SummerWarmEndAdjustmentF {
+option ChangingSkies.SummerWarmTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 89.0,
     page = ChangingSkies,
-    translation = ChangingSkies_SummerWarmEndAdjustmentF,
+    translation = ChangingSkies_SummerWarmTargetF,
 }
 
-option ChangingSkies.FallColdEndAdjustmentF {
+option ChangingSkies.FallColdTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 42.4,
     page = ChangingSkies,
-    translation = ChangingSkies_FallColdEndAdjustmentF,
+    translation = ChangingSkies_FallColdTargetF,
 }
 
-option ChangingSkies.FallWarmEndAdjustmentF {
+option ChangingSkies.FallWarmTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 71.2,
     page = ChangingSkies,
-    translation = ChangingSkies_FallWarmEndAdjustmentF,
+    translation = ChangingSkies_FallWarmTargetF,
 }
 
-option ChangingSkies.WinterColdEndAdjustmentF {
+option ChangingSkies.WinterColdTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 19.9,
     page = ChangingSkies,
-    translation = ChangingSkies_WinterColdEndAdjustmentF,
+    translation = ChangingSkies_WinterColdTargetF,
 }
 
-option ChangingSkies.WinterWarmEndAdjustmentF {
+option ChangingSkies.WinterWarmTargetF {
     type = double,
-    min = -144,
-    max = 144,
-    default = 0,
+    min = -100,
+    max = 200,
+    default = 48.7,
     page = ChangingSkies,
-    translation = ChangingSkies_WinterWarmEndAdjustmentF,
+    translation = ChangingSkies_WinterWarmTargetF,
 }
 
 option ChangingSkies.DebugLogging {

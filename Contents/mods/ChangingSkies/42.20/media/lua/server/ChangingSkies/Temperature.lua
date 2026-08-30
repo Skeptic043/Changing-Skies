@@ -21,9 +21,9 @@ local function lerp(factor, startValue, endValue)
     return startValue + (endValue - startValue) * factor
 end
 
-function Temperature.calculateDeltaC(coldAdjustmentF, warmAdjustmentF, airMassTemperature)
+function Temperature.calculateDeltaC(coldDeltaF, warmDeltaF, airMassTemperature)
     local normalizedAirMass = clamp((airMassTemperature + 1.0) / 2.0, 0.0, 1.0)
-    local deltaF = lerp(normalizedAirMass, coldAdjustmentF, warmAdjustmentF)
+    local deltaF = lerp(normalizedAirMass, coldDeltaF, warmDeltaF)
     return deltaF * 5.0 / 9.0
 end
 
@@ -53,14 +53,18 @@ function Temperature.apply(climateManager, settings)
         return { applied = false, reason = "admin" }
     end
 
-    local pair, profileName = ChangingSkies.Settings.profileForSeason(
+    local pair, profileName = ChangingSkies.Settings.profileForMonth(
         settings,
-        climateManager:getSeasonId()
+        GameTime.getInstance():getMonth()
     )
     local cleanValues = climateManager:getClimateValuesCopy()
     local vanillaTemperature = cleanValues:getTemperature()
     local airMassTemperature = cleanValues:getAirMassTemperature()
-    local deltaC = Temperature.calculateDeltaC(pair.coldF, pair.warmF, airMassTemperature)
+    local deltaC = Temperature.calculateDeltaC(
+        pair.coldDeltaF,
+        pair.warmDeltaF,
+        airMassTemperature
+    )
     local adjustedBase = clamp(
         vanillaTemperature + deltaC,
         Constants.TEMPERATURE_MIN_C,
@@ -111,4 +115,3 @@ function Temperature.resetOwnershipForTests()
 end
 
 ChangingSkies.Temperature = Temperature
-
