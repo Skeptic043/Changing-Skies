@@ -108,6 +108,15 @@ function Thunder.onClimateTick(climateManager, settings, state, worldAgeHours, r
     if not scopeAllows(period, settings.addedThunderScope or 1) then
         return "OUT_OF_SCOPE"
     end
+    local lastTriggeredSlot = state.lastTriggeredThunderMinuteSlot
+    if lastTriggeredSlot ~= nil and lastTriggeredSlot > slot then
+        state.lastTriggeredThunderMinuteSlot = nil
+        lastTriggeredSlot = nil
+    end
+    if lastTriggeredSlot ~= nil and
+        slot - lastTriggeredSlot < Constants.THUNDER_MINIMUM_INTERVAL_MINUTES then
+        return "THROTTLED"
+    end
     if randomUnit() >= probability then
         return "ROLL_FAILED"
     end
@@ -134,6 +143,7 @@ function Thunder.onClimateTick(climateManager, settings, state, worldAgeHours, r
     local y = roundInteger(targetPlayer.y + math.sin(angle) * distance)
 
     thunderSystem:triggerThunderEvent(x, y, true, false, false)
+    state.lastTriggeredThunderMinuteSlot = slot
     Log.debug("Added sound-only thunder at " .. tostring(x) .. "," .. tostring(y) .. ".")
     return "TRIGGERED", x, y
 end

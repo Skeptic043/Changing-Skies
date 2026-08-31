@@ -46,6 +46,13 @@ function State.ensure(climateManager)
         thunderSlot ~= math.floor(thunderSlot) then
         state.lastProcessedThunderMinuteSlot = nil
     end
+    local triggeredThunderSlot = state.lastTriggeredThunderMinuteSlot
+    if type(triggeredThunderSlot) ~= "number" or
+        triggeredThunderSlot ~= triggeredThunderSlot or
+        triggeredThunderSlot == math.huge or triggeredThunderSlot == -math.huge or
+        triggeredThunderSlot ~= math.floor(triggeredThunderSlot) then
+        state.lastTriggeredThunderMinuteSlot = nil
+    end
     return state
 end
 

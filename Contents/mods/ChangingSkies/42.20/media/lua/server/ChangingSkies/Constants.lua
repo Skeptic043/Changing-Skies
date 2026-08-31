@@ -53,6 +53,20 @@ Constants.STORM_PROBABILITIES = {
 }
 
 Constants.STORM_STAGE_BY_TYPE = {
+    [2] = 2,
+    [3] = 8,
+    [4] = 7,
+}
+
+Constants.SEASONAL_STORM_STAGE_BY_EROSION_SEASON = {
+    [1] = 3,
+    [2] = 8,
+    [3] = 8,
+    [4] = 3,
+    [5] = 7,
+}
+
+Constants.RANDOM_STORM_STAGE_IDS = {
     2,
     8,
     7,
@@ -66,7 +80,7 @@ Constants.STORM_DURATION_BANDS = {
 }
 
 Constants.RANDOM_STORM_DURATION_MINIMUM = 4
-Constants.RANDOM_STORM_DURATION_MAXIMUM = 100
+Constants.RANDOM_STORM_DURATION_MAXIMUM = 240
 
 Constants.THUNDER_STAGE_IDS = {
     [2] = true,
@@ -78,13 +92,12 @@ Constants.THUNDER_STAGE_IDS = {
 Constants.THUNDER_PROBABILITIES = {
     0.0,
     1.0 / 120.0,
-    1.0 / 60.0,
     1.0 / 30.0,
-    1.0 / 15.0,
-    1.0 / 5.0,
+    1.0 / 10.0,
     1.0,
 }
 
+Constants.THUNDER_MINIMUM_INTERVAL_MINUTES = 5
 Constants.THUNDER_MINIMUM_DISTANCE = 250.0
 Constants.THUNDER_MAXIMUM_DISTANCE = 900.0
 
@@ -96,10 +109,10 @@ Constants.SEASON_TEMPERATURE_REFERENCES_F = {
 }
 
 Constants.DEFAULT_TEMPERATURE_RANGES_F = {
-    Spring = { coldF = 37.0, warmF = 66.0, text = "37 to 66" },
-    Summer = { coldF = 60.0, warmF = 89.0, text = "60 to 89" },
-    Fall = { coldF = 42.0, warmF = 71.0, text = "42 to 71" },
-    Winter = { coldF = 19.0, warmF = 48.0, text = "19 to 48" },
+    Spring = { coldF = 37.0, warmF = 66.0 },
+    Summer = { coldF = 60.0, warmF = 89.0 },
+    Fall = { coldF = 42.0, warmF = 71.0 },
+    Winter = { coldF = 19.0, warmF = 48.0 },
 }
 
 -- GameTime months are zero-based: January is 0 and December is 11.

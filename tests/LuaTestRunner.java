@@ -43,12 +43,12 @@ public final class LuaTestRunner {
         Field optionsField = CustomSandboxOptions.class.getDeclaredField("options");
         optionsField.setAccessible(true);
         int optionCount = ((List<?>) optionsField.get(options)).size();
-        if (optionCount != 16) {
+        if (optionCount != 20) {
             throw new IllegalStateException(
-                "Build 42.20 parsed " + optionCount + " sandbox options instead of 16"
+                "Build 42.20 parsed " + optionCount + " sandbox options instead of 20"
             );
         }
-        System.out.println("Build 42.20 parsed all 16 sandbox options.");
+        System.out.println("Build 42.20 parsed all 20 sandbox options.");
     }
 
     public static void main(String[] args) throws Exception {

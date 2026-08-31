@@ -126,11 +126,20 @@ local function weatherSettings()
     }
 end
 
-local function newWeatherManager(initiallyRunning, startsWhenTriggered)
+local function newWeatherManager(initiallyRunning, startsWhenTriggered, options)
+    options = options or {}
     local period = { running = initiallyRunning == true }
     function period:isRunning() return self.running end
     local manager = { triggerCount = 0, stageTriggerCount = 0 }
     function manager:getWeatherPeriod() return period end
+    function manager:getSeason()
+        if options.seasonUnavailable then
+            return nil
+        end
+        local season = { id = options.erosionSeasonId }
+        function season:getSeason() return self.id end
+        return season
+    end
     function manager:triggerCustomWeather(strength, coldFront)
         self.triggerCount = self.triggerCount + 1
         self.lastWeatherStrength = strength
@@ -395,10 +404,14 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
             CooldownMinimumHours = 24.0,
             CooldownMaximumHours = 72.0,
             EnableTemperatureAdjustment = true,
-            SpringTemperatureRangeF = "37 to 66",
-            SummerTemperatureRangeF = "60 to 89",
-            FallTemperatureRangeF = "42 to 71",
-            WinterTemperatureRangeF = "19 to 48",
+            SpringColdTargetF = 37.0,
+            SpringWarmTargetF = 66.0,
+            SummerColdTargetF = 60.0,
+            SummerWarmTargetF = 89.0,
+            FallColdTargetF = 42.0,
+            FallWarmTargetF = 71.0,
+            WinterColdTargetF = 19.0,
+            WinterWarmTargetF = 48.0,
             DebugLogging = false,
         },
     }
@@ -409,15 +422,19 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
         ["ChangingSkies.StormFrequency"] = 7,
         ["ChangingSkies.StormType"] = 4,
         ["ChangingSkies.StormLength"] = 4,
-        ["ChangingSkies.AddedThunderFrequency"] = 7,
+        ["ChangingSkies.AddedThunderFrequency"] = 5,
         ["ChangingSkies.AddedThunderScope"] = 3,
         ["ChangingSkies.CooldownMinimumHours"] = 0.0,
         ["ChangingSkies.CooldownMaximumHours"] = 5.0,
         ["ChangingSkies.EnableTemperatureAdjustment"] = false,
-        ["ChangingSkies.SpringTemperatureRangeF"] = "36.5 TO 67.3",
-        ["ChangingSkies.SummerTemperatureRangeF"] = " 58.2 to 91 ",
-        ["ChangingSkies.FallTemperatureRangeF"] = "39.4 To 74.2",
-        ["ChangingSkies.WinterTemperatureRangeF"] = "15.9 tO 52.7",
+        ["ChangingSkies.SpringColdTargetF"] = 36.5,
+        ["ChangingSkies.SpringWarmTargetF"] = 67.3,
+        ["ChangingSkies.SummerColdTargetF"] = 58.2,
+        ["ChangingSkies.SummerWarmTargetF"] = 91.0,
+        ["ChangingSkies.FallColdTargetF"] = 39.4,
+        ["ChangingSkies.FallWarmTargetF"] = 74.2,
+        ["ChangingSkies.WinterColdTargetF"] = 15.9,
+        ["ChangingSkies.WinterWarmTargetF"] = 52.7,
         ["ChangingSkies.DebugLogging"] = true,
     })
     getSandboxOptions = function() return live end
@@ -432,7 +449,7 @@ test("live sandbox options replace the stale SandboxVars snapshot", function()
     assertEqual(settings.stormLength, 4)
     assertEqual(settings.stormDurationBand.minimum, 48.0)
     assertEqual(settings.stormDurationBand.maximum, 96.0)
-    assertEqual(settings.addedThunderFrequency, 7)
+    assertEqual(settings.addedThunderFrequency, 5)
     assertEqual(settings.addedThunderProbability, 1.0)
     assertEqual(settings.addedThunderScope, 3)
     assertEqual(settings.cooldownMinimumHours, 0.0)
@@ -576,13 +593,17 @@ test("rounded default ranges populate all downstream seasonal fields", function(
     end
 end)
 
-test("range parser accepts signed decimals, whitespace, and case-insensitive to", function()
+test("numeric target endpoints accept signed decimals and equal values", function()
     ChangingSkies.Settings.resetValidationMemoryForTests()
     local settings = ChangingSkies.Settings.readFromTable({
-        SpringTemperatureRangeF = "30.5 to 70.25",
-        SummerTemperatureRangeF = "-20 TO -10",
-        FallTemperatureRangeF = "  40.25   To   75.5  ",
-        WinterTemperatureRangeF = "+1.5 tO +2.5",
+        SpringColdTargetF = 30.5,
+        SpringWarmTargetF = 70.25,
+        SummerColdTargetF = -20.0,
+        SummerWarmTargetF = -10.0,
+        FallColdTargetF = 40.25,
+        FallWarmTargetF = 75.5,
+        WinterColdTargetF = 0.0,
+        WinterWarmTargetF = 0.0,
     })
     assertEqual(settings.temperatureProfiles.Spring.coldTargetF, 30.5)
     assertEqual(settings.temperatureProfiles.Spring.warmTargetF, 70.25)
@@ -590,22 +611,23 @@ test("range parser accepts signed decimals, whitespace, and case-insensitive to"
     assertEqual(settings.temperatureProfiles.Summer.warmTargetF, -10.0)
     assertEqual(settings.temperatureProfiles.Fall.coldTargetF, 40.25)
     assertEqual(settings.temperatureProfiles.Fall.warmTargetF, 75.5)
-    assertEqual(settings.temperatureProfiles.Winter.coldTargetF, 1.5)
-    assertEqual(settings.temperatureProfiles.Winter.warmTargetF, 2.5)
+    assertEqual(settings.temperatureProfiles.Winter.coldTargetF, 0.0)
+    assertEqual(settings.temperatureProfiles.Winter.warmTargetF, 0.0)
     assertNear(settings.temperatureProfiles.Summer.coldDeltaF, -80.2, 0.0001)
     assertNear(settings.temperatureProfiles.Summer.warmDeltaF, -99.0, 0.0001)
 end)
 
-test("malformed live range edits preserve the last valid pair", function()
+test("incomplete and reversed numeric edits preserve the last valid pair", function()
     ChangingSkies.Settings.resetValidationMemoryForTests()
     local valid = ChangingSkies.Settings.readFromTable({
-        SpringTemperatureRangeF = "30 to 70",
+        SpringColdTargetF = 30.0,
+        SpringWarmTargetF = 70.0,
     })
     assertEqual(valid.temperatureProfiles.Spring.coldTargetF, 30.0)
     assertEqual(valid.temperatureProfiles.Spring.warmTargetF, 70.0)
 
     local invalid = ChangingSkies.Settings.readFromTable({
-        SpringTemperatureRangeF = "",
+        SpringColdTargetF = 40.0,
         AddedWeatherFrequency = 8,
         AddedWeatherSeverity = -1,
         StormFrequency = 99,
@@ -630,28 +652,34 @@ test("malformed live range edits preserve the last valid pair", function()
     assertEqual(invalid.cooldownMinimumHours,
         ChangingSkies.Constants.DEFAULTS.cooldownMinimumHours)
 
+    local reversed = ChangingSkies.Settings.readFromTable({
+        SpringColdTargetF = 80.0,
+        SpringWarmTargetF = 20.0,
+    })
+    assertEqual(reversed.temperatureProfiles.Spring.coldTargetF, 30.0)
+    assertEqual(reversed.temperatureProfiles.Spring.warmTargetF, 70.0)
+
 end)
 
-test("invalid ranges fall back to rounded defaults before any valid value", function()
-    local invalidValues = {
-        "",
-        string.rep("1", 65),
-        "nan to 10",
-        "-inf to 10",
-        "1 to 2 trailing",
-        "-151 to 0",
-        "0 to 201",
-        "10 to 10",
-        "20 to 10",
-        "10 20",
+test("invalid numeric endpoints fall back to rounded defaults before any valid pair", function()
+    local invalidPairs = {
+        { cold = nil, warm = 10.0 },
+        { cold = 10.0, warm = nil },
+        { cold = "not numeric", warm = 10.0 },
+        { cold = 0 / 0, warm = 10.0 },
+        { cold = -math.huge, warm = 10.0 },
+        { cold = -151.0, warm = 0.0 },
+        { cold = 0.0, warm = 201.0 },
+        { cold = 20.0, warm = 10.0 },
     }
-    for _, value in ipairs(invalidValues) do
+    for _, values in ipairs(invalidPairs) do
         ChangingSkies.Settings.resetValidationMemoryForTests()
         local settings = ChangingSkies.Settings.readFromTable({
-            SpringTemperatureRangeF = value,
+            SpringColdTargetF = values.cold,
+            SpringWarmTargetF = values.warm,
         })
-        assertEqual(settings.temperatureProfiles.Spring.coldTargetF, 37.0, value)
-        assertEqual(settings.temperatureProfiles.Spring.warmTargetF, 66.0, value)
+        assertEqual(settings.temperatureProfiles.Spring.coldTargetF, 37.0)
+        assertEqual(settings.temperatureProfiles.Spring.warmTargetF, 66.0)
     end
 end)
 
@@ -765,9 +793,15 @@ test("storm and thunder constants preserve exact meanings", function()
     end
 
     local stages = ChangingSkies.Constants.STORM_STAGE_BY_TYPE
-    assertEqual(stages[1], 2)
-    assertEqual(stages[2], 8)
-    assertEqual(stages[3], 7)
+    assertEqual(stages[2], 2)
+    assertEqual(stages[3], 8)
+    assertEqual(stages[4], 7)
+    local seasonalStages = ChangingSkies.Constants.SEASONAL_STORM_STAGE_BY_EROSION_SEASON
+    assertEqual(seasonalStages[1], 3)
+    assertEqual(seasonalStages[2], 8)
+    assertEqual(seasonalStages[3], 8)
+    assertEqual(seasonalStages[4], 3)
+    assertEqual(seasonalStages[5], 7)
     local durations = ChangingSkies.Constants.STORM_DURATION_BANDS
     local expectedDurations = { 6.0, 12.0, 12.0, 24.0, 24.0, 48.0, 48.0, 96.0 }
     for index = 1, 4 do
@@ -775,72 +809,58 @@ test("storm and thunder constants preserve exact meanings", function()
         assertEqual(durations[index].maximum, expectedDurations[index * 2])
     end
     assertEqual(ChangingSkies.Constants.RANDOM_STORM_DURATION_MINIMUM, 4)
-    assertEqual(ChangingSkies.Constants.RANDOM_STORM_DURATION_MAXIMUM, 100)
+    assertEqual(ChangingSkies.Constants.RANDOM_STORM_DURATION_MAXIMUM, 240)
 
     local thunder = ChangingSkies.Constants.THUNDER_PROBABILITIES
-    assertEqual(#thunder, 7)
+    assertEqual(#thunder, 5)
     assertEqual(thunder[1], 0.0)
     assertNear(thunder[2], 1.0 / 120.0, 0.000000001)
-    assertNear(thunder[3], 1.0 / 60.0, 0.000000001)
-    assertNear(thunder[4], 1.0 / 30.0, 0.000000001)
-    assertNear(thunder[5], 1.0 / 15.0, 0.000000001)
-    assertNear(thunder[6], 1.0 / 5.0, 0.000000001)
-    assertEqual(thunder[7], 1.0)
+    assertNear(thunder[3], 1.0 / 30.0, 0.000000001)
+    assertNear(thunder[4], 1.0 / 10.0, 0.000000001)
+    assertEqual(thunder[5], 1.0)
+    assertEqual(ChangingSkies.Constants.THUNDER_MINIMUM_INTERVAL_MINUTES, 5)
 end)
 
-test("Vanilla Seasonal uses one generated cold-front request with no fallback", function()
-    local settings = weatherSettings()
-    settings.stormProbability = 1.0
-    settings.stormType = 5
-    settings.stormLength = 5
-    local manager = newWeatherManager(false, true)
-    local state = { lastWeatherRunning = false }
-    local result = ChangingSkies.Weather.onTenMinutes(
-        manager,
-        settings,
-        state,
-        705.0,
-        sequenceRandom({ 0.0 })
-    )
-    assertEqual(result, "STORM_TRIGGERED")
-    assertEqual(manager.triggerCount, 1)
-    assertEqual(manager.stageTriggerCount, 0)
-    assertEqual(manager.lastWeatherStrength, 1.0)
-    assertEqual(manager.lastWeatherColdFront, true)
-    assertEqual(state.schedulerStatus, "ACTIVE")
-
-    local activeManager = newWeatherManager(true, true)
-    assertEqual(ChangingSkies.Weather.onTenMinutes(
-        activeManager,
-        settings,
-        { lastWeatherRunning = false },
-        705.2,
-        function() return 0.0 end
-    ), "ACTIVE")
-    assertEqual(activeManager.triggerCount, 0)
-
-    local rejectedManager = newWeatherManager(false, false)
-    local rejectedState = { lastWeatherRunning = false }
-    assertEqual(ChangingSkies.Weather.onTenMinutes(
-        rejectedManager,
-        settings,
-        rejectedState,
-        705.4,
-        sequenceRandom({ 0.0 })
-    ), "TRIGGER_REJECTED")
-    assertEqual(rejectedManager.triggerCount, 1)
-    assertEqual(rejectedManager.stageTriggerCount, 0)
-    assertEqual(rejectedState.schedulerStatus, "ELIGIBLE")
+test("Seasonal maps every ErosionSeason and fallback to one exact stage", function()
+    local cases = {
+        { season = 1, expected = 3 },
+        { season = 2, expected = 8 },
+        { season = 3, expected = 8 },
+        { season = 4, expected = 3 },
+        { season = 5, expected = 7 },
+        { season = 99, expected = 3 },
+        { unavailable = true, expected = 3 },
+    }
+    for index, item in ipairs(cases) do
+        local settings = weatherSettings()
+        settings.stormProbability = 1.0
+        settings.stormType = 1
+        local manager = newWeatherManager(false, true, {
+            erosionSeasonId = item.season,
+            seasonUnavailable = item.unavailable,
+        })
+        local state = { lastWeatherRunning = false }
+        local result = ChangingSkies.Weather.onTenMinutes(
+            manager, settings, state, 705.0 + index,
+            sequenceRandom({ 0.0, 0.5 })
+        )
+        assertEqual(result, "STORM_TRIGGERED")
+        assertEqual(manager.lastStageId, item.expected)
+        assertEqual(manager.stageTriggerCount, 1)
+        assertEqual(manager.triggerCount, 0)
+        assertEqual(state.schedulerStatus, "ACTIVE")
+    end
 end)
 
 test("storm types and duration bands trigger exact vanilla stages", function()
     local expectedStages = { 2, 8, 7 }
-    for stormType = 1, 3 do
+    for offset = 1, 3 do
+        local stormType = offset + 1
         local settings = weatherSettings()
         settings.enableAddedWeather = false
         settings.stormProbability = 1.0
         settings.stormType = stormType
-        settings.stormDurationBand = ChangingSkies.Constants.STORM_DURATION_BANDS[stormType]
+        settings.stormDurationBand = ChangingSkies.Constants.STORM_DURATION_BANDS[offset]
         local manager = newWeatherManager(false, true)
         local result = ChangingSkies.Weather.onTenMinutes(
             manager,
@@ -850,21 +870,21 @@ test("storm types and duration bands trigger exact vanilla stages", function()
             sequenceRandom({ 0.0, 0.5 })
         )
         assertEqual(result, "STORM_TRIGGERED")
-        assertEqual(manager.lastStageId, expectedStages[stormType])
+        assertEqual(manager.lastStageId, expectedStages[offset])
         local band = settings.stormDurationBand
         assertNear(manager.lastStageDurationHours,
-            (band.minimum + band.maximum) / 2.0, 0.0001)
+            (band.minimum + band.maximum) / 2.0 - 2.0, 0.0001)
         assertEqual(manager.triggerCount, 0)
     end
 end)
 
-test("Random Extreme uniformly selects from the three exact stages", function()
+test("Random uniformly selects from the three exact stages", function()
     local selected = {}
     for randomChoice = 0, 2 do
         local settings = weatherSettings()
         settings.enableAddedWeather = false
         settings.stormProbability = 1.0
-        settings.stormType = 4
+        settings.stormType = 5
         settings.stormDurationBand = { minimum = 48.0, maximum = 96.0 }
         local manager = newWeatherManager(false, true)
         local result = ChangingSkies.Weather.onTenMinutes(
@@ -876,33 +896,62 @@ test("Random Extreme uniformly selects from the three exact stages", function()
         )
         assertEqual(result, "STORM_TRIGGERED")
         selected[randomChoice + 1] = manager.lastStageId
-        assertNear(manager.lastStageDurationHours, 60.0, 0.0001)
+        assertNear(manager.lastStageDurationHours, 58.0, 0.0001)
     end
     assertEqual(selected[1], 2)
     assertEqual(selected[2], 8)
     assertEqual(selected[3], 7)
 end)
 
-test("random exact storm lengths are integer and clamped from 4 through 100", function()
+test("Random stage selection clamps invalid authority RNG", function()
     local cases = {
-        { stormType = 1, unit = 0.0, expected = 4 },
-        { stormType = 2, unit = 0.5, expected = 52 },
-        { stormType = 3, unit = 1.0, expected = 100 },
-        { stormType = 4, unit = 2.0, expected = 100 },
-        { stormType = 1, unit = -1.0, expected = 4 },
-        { stormType = 2, unit = 0 / 0, expected = 4 },
+        { unit = -1.0, expected = 2 },
+        { unit = 2.0, expected = 7 },
+        { unit = 0 / 0, expected = 2 },
+        { unit = math.huge, expected = 2 },
+        { unit = -math.huge, expected = 2 },
     }
     for index, item in ipairs(cases) do
         local settings = weatherSettings()
         settings.enableAddedWeather = false
         settings.stormProbability = 1.0
-        settings.stormType = item.stormType
+        settings.stormType = 5
+        local manager = newWeatherManager(false, true)
+        assertEqual(ChangingSkies.Weather.onTenMinutes(
+            manager, settings, { lastWeatherRunning = false }, 712.0 + index,
+            sequenceRandom({ 0.0, item.unit, 0.5 })
+        ), "STORM_TRIGGERED")
+        assertEqual(manager.lastStageId, item.expected)
+    end
+end)
+
+test("retired Added Thunder frequency values fall back to Off", function()
+    for _, retiredValue in ipairs({ 6, 7 }) do
+        local settings = ChangingSkies.Settings.readFromTable({
+            AddedThunderFrequency = retiredValue,
+        })
+        assertEqual(settings.addedThunderFrequency, 1)
+        assertEqual(settings.addedThunderProbability, 0.0)
+    end
+end)
+
+test("random nominal storm totals map from 4 through 240 to middle stages 2 through 238", function()
+    local cases = {
+        { unit = 0.0, expected = 2 },
+        { unit = 0.5, expected = 120 },
+        { unit = 1.0, expected = 238 },
+        { unit = 2.0, expected = 238 },
+        { unit = -1.0, expected = 2 },
+        { unit = 0 / 0, expected = 2 },
+    }
+    for index, item in ipairs(cases) do
+        local settings = weatherSettings()
+        settings.enableAddedWeather = false
+        settings.stormProbability = 1.0
+        settings.stormType = 2
         settings.stormLength = 5
         settings.stormDurationBand = nil
         local values = { 0.0 }
-        if item.stormType == 4 then
-            values[#values + 1] = 0.1
-        end
         values[#values + 1] = item.unit
         local manager = newWeatherManager(false, true)
         local result = ChangingSkies.Weather.onTenMinutes(
@@ -916,8 +965,8 @@ test("random exact storm lengths are integer and clamped from 4 through 100", fu
         assertEqual(manager.lastStageDurationHours, item.expected)
         assertEqual(manager.lastStageDurationHours,
             math.floor(manager.lastStageDurationHours))
-        assertEqual(manager.lastStageDurationHours >= 4 and
-            manager.lastStageDurationHours <= 100, true)
+        assertEqual(manager.lastStageDurationHours >= 2 and
+            manager.lastStageDurationHours <= 238, true)
     end
 end)
 
@@ -1173,7 +1222,7 @@ test("Added Thunder scope uses only the active stage or vanilla storm state", fu
     restorePlayers()
 end)
 
-test("added thunder is independent and emits at most once per current minute", function()
+test("successful Added Thunder is throttled to one event every five active-weather minutes", function()
     local restorePlayers = installPlayerEnvironment(false, { newPlayer(100.0, 200.0) })
     local manager, events = newThunderManager(true, true)
     local settings = {
@@ -1192,6 +1241,10 @@ test("added thunder is independent and emits at most once per current minute", f
     ), "DUPLICATE")
     assertEqual(ChangingSkies.Thunder.onClimateTick(
         manager, settings, state, 810.02,
+        function() error("throttled minute must not roll") end
+    ), "THROTTLED")
+    assertEqual(ChangingSkies.Thunder.onClimateTick(
+        manager, settings, state, (48600 + 5) / 60.0,
         sequenceRandom({ 0.0, 0.0, 0.0, 0.0 })
     ), "TRIGGERED")
     assertEqual(ChangingSkies.Thunder.onClimateTick(
@@ -1251,6 +1304,7 @@ test("state is namespaced, schema-versioned, and corruption-safe", function()
     assertEqual(state.schemaVersion, ChangingSkies.Constants.SCHEMA_VERSION)
     assertEqual(state.currentWeatherCreatedByChangingSkies, false)
     assertEqual(state.lastProcessedThunderMinuteSlot, nil)
+    assertEqual(state.lastTriggeredThunderMinuteSlot, nil)
     assertEqual(manager.modData.ChangingSkies, state)
 end)
 
@@ -1261,6 +1315,7 @@ test("corrupt persisted thunder-minute slots repair in place", function()
         lastWeatherRunning = false,
         currentWeatherCreatedByChangingSkies = false,
         lastProcessedThunderMinuteSlot = "corrupt",
+        lastTriggeredThunderMinuteSlot = "corrupt",
         unrelated = "preserved",
     }
     local manager = { modData = { ChangingSkies = persistedState } }
@@ -1268,6 +1323,7 @@ test("corrupt persisted thunder-minute slots repair in place", function()
     local repaired = ChangingSkies.State.ensure(manager)
     assertEqual(repaired, persistedState)
     assertEqual(repaired.lastProcessedThunderMinuteSlot, nil)
+    assertEqual(repaired.lastTriggeredThunderMinuteSlot, nil)
     assertEqual(repaired.unrelated, "preserved")
 
     repaired.lastProcessedThunderMinuteSlot = 1.5
@@ -1276,6 +1332,41 @@ test("corrupt persisted thunder-minute slots repair in place", function()
     assertEqual(ChangingSkies.State.ensure(manager).lastProcessedThunderMinuteSlot, nil)
     repaired.lastProcessedThunderMinuteSlot = 1234
     assertEqual(ChangingSkies.State.ensure(manager).lastProcessedThunderMinuteSlot, 1234)
+    repaired.lastTriggeredThunderMinuteSlot = 1.5
+    assertEqual(ChangingSkies.State.ensure(manager).lastTriggeredThunderMinuteSlot, nil)
+    repaired.lastTriggeredThunderMinuteSlot = math.huge
+    assertEqual(ChangingSkies.State.ensure(manager).lastTriggeredThunderMinuteSlot, nil)
+    repaired.lastTriggeredThunderMinuteSlot = 1230
+    assertEqual(ChangingSkies.State.ensure(manager).lastTriggeredThunderMinuteSlot, 1230)
+end)
+
+test("persisted thunder slots prevent reload duplicates and catch-up", function()
+    local restorePlayers = installPlayerEnvironment(false, { newPlayer(0.0, 0.0) })
+    local manager, events = newThunderManager(true, true)
+    local state = {
+        lastProcessedThunderMinuteSlot = 6000,
+        lastTriggeredThunderMinuteSlot = 6000,
+    }
+    assertEqual(ChangingSkies.Thunder.onClimateTick(
+        manager, { addedThunderProbability = 1.0 }, state, 100.0,
+        function() error("reload duplicate must not roll") end
+    ), "DUPLICATE")
+    assertEqual(ChangingSkies.Thunder.onClimateTick(
+        manager, { addedThunderProbability = 1.0 }, state, (6000 + 1) / 60.0,
+        function() error("reload throttle must not roll") end
+    ), "THROTTLED")
+    assertEqual(ChangingSkies.Thunder.onClimateTick(
+        manager, { addedThunderProbability = 1.0 }, state, (6000 + 5) / 60.0,
+        sequenceRandom({ 0.0, 0.0, 0.0, 0.0 })
+    ), "TRIGGERED")
+    state.lastTriggeredThunderMinuteSlot = 7000
+    assertEqual(ChangingSkies.Thunder.onClimateTick(
+        manager, { addedThunderProbability = 1.0 }, state, (6000 + 6) / 60.0,
+        sequenceRandom({ 0.0, 0.0, 0.0, 0.0 })
+    ), "TRIGGERED")
+    assertEqual(state.lastTriggeredThunderMinuteSlot, 6006)
+    assertEqual(#events, 2)
+    restorePlayers()
 end)
 
 test("weather ownership marker distinguishes verified and natural periods", function()

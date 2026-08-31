@@ -18,10 +18,14 @@ local OPTION_NAMES = {
     "CooldownMinimumHours",
     "CooldownMaximumHours",
     "EnableTemperatureAdjustment",
-    "SpringTemperatureRangeF",
-    "SummerTemperatureRangeF",
-    "FallTemperatureRangeF",
-    "WinterTemperatureRangeF",
+    "SpringColdTargetF",
+    "SpringWarmTargetF",
+    "SummerColdTargetF",
+    "SummerWarmTargetF",
+    "FallColdTargetF",
+    "FallWarmTargetF",
+    "WinterColdTargetF",
+    "WinterWarmTargetF",
     "DebugLogging",
 }
 
@@ -54,35 +58,23 @@ local function defaultPair(profile)
     return { coldTargetF = defaults.coldF, warmTargetF = defaults.warmF }
 end
 
-local function parseTemperatureRange(value)
-    if type(value) ~= "string" or #value > 64 then
-        return nil
-    end
-    local coldText, warmText = string.match(
-        value,
-        "^%s*([+-]?%d*%.?%d+)%s*[tT][oO]%s*([+-]?%d*%.?%d+)%s*$"
-    )
-    if coldText == nil or warmText == nil then
-        return nil
-    end
-    local coldTargetF = finiteNumber(coldText, nil)
-    local warmTargetF = finiteNumber(warmText, nil)
+local function validTemperaturePair(coldValue, warmValue)
+    local coldTargetF = finiteNumber(coldValue, nil)
+    local warmTargetF = finiteNumber(warmValue, nil)
     if coldTargetF == nil or warmTargetF == nil or
         coldTargetF < -150.0 or coldTargetF > 200.0 or
         warmTargetF < -150.0 or warmTargetF > 200.0 or
-        warmTargetF <= coldTargetF then
+        warmTargetF < coldTargetF then
         return nil
     end
     return { coldTargetF = coldTargetF, warmTargetF = warmTargetF }
 end
 
 local function readPair(source, profile)
-    local defaultRange = Constants.DEFAULT_TEMPERATURE_RANGES_F[profile]
-    local rawValue = source[profile .. "TemperatureRangeF"]
-    if rawValue == nil then
-        rawValue = defaultRange.text
-    end
-    local pair = parseTemperatureRange(rawValue)
+    local pair = validTemperaturePair(
+        source[profile .. "ColdTargetF"],
+        source[profile .. "WarmTargetF"]
+    )
     if pair ~= nil then
         Settings.lastValidTemperaturePairs[profile] = copyPair(pair)
     else

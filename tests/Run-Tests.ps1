@@ -75,8 +75,8 @@ try {
         throw "sandbox-options.txt is missing VERSION = 1"
     }
     $optionCount = ([regex]::Matches($sandbox, "(?m)^option ChangingSkies\.")).Count
-    if ($optionCount -ne 16) {
-        throw "Expected 16 Changing Skies sandbox options, found $optionCount"
+    if ($optionCount -ne 20) {
+        throw "Expected 20 Changing Skies sandbox options, found $optionCount"
     }
 
     $expectedOptionIds = @(
@@ -91,10 +91,14 @@ try {
         "CooldownMinimumHours",
         "CooldownMaximumHours",
         "EnableTemperatureAdjustment",
-        "SpringTemperatureRangeF",
-        "SummerTemperatureRangeF",
-        "FallTemperatureRangeF",
-        "WinterTemperatureRangeF",
+        "SpringColdTargetF",
+        "SpringWarmTargetF",
+        "SummerColdTargetF",
+        "SummerWarmTargetF",
+        "FallColdTargetF",
+        "FallWarmTargetF",
+        "WinterColdTargetF",
+        "WinterWarmTargetF",
         "DebugLogging"
     )
     $declaredOptionIds = [regex]::Matches(
@@ -103,7 +107,7 @@ try {
     ) | ForEach-Object { $_.Groups["id"].Value }
     $optionIdDifference = Compare-Object $expectedOptionIds $declaredOptionIds
     if ($optionIdDifference) {
-        throw "Changing Skies sandbox option IDs do not match the expected 16-option schema."
+        throw "Changing Skies sandbox option IDs do not match the expected 20-option schema."
     }
     if ($sandbox -match "(?m)^option ChangingSkies\.[A-Za-z]+AdjustmentF\s*\{") {
         throw "Retired *AdjustmentF sandbox option declarations must not be present."
@@ -133,7 +137,7 @@ try {
         @("StormFrequency", 7, 1, "ChangingSkies_OptionalFrequency"),
         @("StormType", 5, 1, "ChangingSkies_StormType"),
         @("StormLength", 5, 2, "ChangingSkies_StormLength"),
-        @("AddedThunderFrequency", 7, 1, "ChangingSkies_OptionalFrequency"),
+        @("AddedThunderFrequency", 5, 1, "ChangingSkies_AddedThunderFrequency"),
         @("AddedThunderScope", 3, 1, "ChangingSkies_AddedThunderScope")
     )
     foreach ($enumOption in $enumOptions) {
@@ -210,16 +214,13 @@ try {
             throw "Optional frequency value $index does not match the exact seven-value order."
         }
     }
-    $stormTypeValues = @(
-        "Heavy Precipitation", "Tropical Storm", "Blizzard", "Random Extreme",
-        "Vanilla Seasonal"
-    )
+    $stormTypeValues = @("Seasonal", "Heavy Precipitation", "Tropical Storm", "Blizzard", "Random")
     $stormLengthValues = @(
         "Short (6-12 hours)",
         "Normal (12-24 hours)",
         "Long (24-48 hours)",
         "Extreme (48-96 hours)",
-        "Random (4-100 hours)"
+        "Random (4-240 hours)"
     )
     for ($index = 1; $index -le 5; $index++) {
         if ($translations.PSObject.Properties["Sandbox_ChangingSkies_StormType_option$index"].Value -ne
@@ -232,16 +233,31 @@ try {
     if ($translations.Sandbox_ChangingSkies_StormFrequency_tooltip -ne
         "Controls the chance for a storm. Note: Rolls for a storm are made before normal weather rolls. If both are set to Insane, storms will win every time." -or
         $translations.Sandbox_ChangingSkies_StormType_tooltip -ne
-        "Selects the guaranteed type of storm. Vanilla Seasonal lets vanilla choose a season-aware weather pattern instead, so a storm is not guaranteed." -or
-        $translations.Sandbox_ChangingSkies_StormLength -ne "Exact Storm Length" -or
+        "Selects the storm type. Seasonal chooses based on current season when a storm is rolled. Random chooses a random storm, disregarding the current season." -or
+        $translations.Sandbox_ChangingSkies_StormLength -ne "Storm Length" -or
         $translations.Sandbox_ChangingSkies_StormLength_tooltip -ne
-        "Selects the requested stage length for exact storm types. Vanilla adds a one-hour start and one-hour clearing stage. Vanilla Seasonal uses vanilla length." -or
+        "Selects the approximate range rolled Storms will be." -or
         $translations.Sandbox_ChangingSkies_AddedThunderFrequency_tooltip -ne
-        "Controls how often sound-only thunder is added during the selected weather scope. This does not add lightning or suppress vanilla thunder." -or
+        "Controls how often thunder is added." -or
         $translations.Sandbox_ChangingSkies_AddedThunderScope -ne "Added Thunder Scope" -or
         $translations.Sandbox_ChangingSkies_AddedThunderScope_tooltip -ne
         "Selects when Added Thunder can play. This does not change thunder created by vanilla weather.") {
         throw "Storm or Added Thunder tooltip does not match the approved copy."
+    }
+
+    $thunderFrequencyValues = @("Off", "Low", "Normal", "High", "Insane")
+    for ($index = 1; $index -le $thunderFrequencyValues.Count; $index++) {
+        $key = "Sandbox_ChangingSkies_AddedThunderFrequency_option$index"
+        if ($translations.PSObject.Properties[$key].Value -ne
+            $thunderFrequencyValues[$index - 1]) {
+            throw "Added Thunder Frequency option $index does not match the approved order."
+        }
+    }
+    foreach ($retiredIndex in 6, 7) {
+        $key = "Sandbox_ChangingSkies_AddedThunderFrequency_option$retiredIndex"
+        if ($null -ne $translations.PSObject.Properties[$key]) {
+            throw "Retired Added Thunder Frequency option $retiredIndex must not be translated."
+        }
     }
 
     $thunderScopeValues = @("All Weather", "Storms Only", "Vanilla Thunderstorms")
@@ -265,10 +281,14 @@ try {
     }
 
     $targetOptions = @(
-        @("SpringTemperatureRangeF", "37 to 66", "Spring Temperature Range", "Enter the Spring cold to warm targets in °F, for example -20 to -10."),
-        @("SummerTemperatureRangeF", "60 to 89", "Summer Temperature Range", "Enter the Summer cold to warm targets in °F, for example -20 to -10."),
-        @("FallTemperatureRangeF", "42 to 71", "Fall Temperature Range", "Enter the Fall cold to warm targets in °F, for example -20 to -10."),
-        @("WinterTemperatureRangeF", "19 to 48", "Winter Temperature Range", "Enter the Winter cold to warm targets in °F, for example -20 to -10.")
+        @("SpringColdTargetF", 37, "Spring Temp Target Low", "Sets the Spring low temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("SpringWarmTargetF", 66, "Spring Temp Target High", "Sets the Spring high temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("SummerColdTargetF", 60, "Summer Temp Target Low", "Sets the Summer low temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("SummerWarmTargetF", 89, "Summer Temp Target High", "Sets the Summer high temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("FallColdTargetF", 42, "Fall Temp Target Low", "Sets the Fall low temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("FallWarmTargetF", 71, "Fall Temp Target High", "Sets the Fall high temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("WinterColdTargetF", 19, "Winter Temp Target Low", "Sets the Winter low temperature target in °F. Vanilla daily and weather variation can move beyond it."),
+        @("WinterWarmTargetF", 48, "Winter Temp Target High", "Sets the Winter high temperature target in °F. Vanilla daily and weather variation can move beyond it.")
     )
     foreach ($target in $targetOptions) {
         $id = $target[0]
@@ -278,10 +298,12 @@ try {
             "(?s)option ChangingSkies\." + [regex]::Escape($id) + "\s*\{(?<body>.*?)\}"
         )
         if (-not $option.Success -or
-            $option.Groups["body"].Value -notmatch "(?m)^\s*type\s*=\s*string," -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*type\s*=\s*double," -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*min\s*=\s*-150," -or
+            $option.Groups["body"].Value -notmatch "(?m)^\s*max\s*=\s*200," -or
             $option.Groups["body"].Value -notmatch
-                ("(?m)^\s*default\s*=\s*`"" + [regex]::Escape($default) + "`",")) {
-            throw "$id is missing its approved string type or default."
+                ("(?m)^\s*default\s*=\s*" + $default + ",")) {
+            throw "$id is missing its approved numeric bounds or rounded default."
         }
         $labelKey = "Sandbox_ChangingSkies_" + $id
         $tooltipKey = $labelKey + "_tooltip"
@@ -291,17 +313,23 @@ try {
         }
     }
 
-    $legacyTemperatureIds = @(
-        "SpringColdTargetF", "SpringWarmTargetF", "SummerColdTargetF",
-        "SummerWarmTargetF", "FallColdTargetF", "FallWarmTargetF",
-        "WinterColdTargetF", "WinterWarmTargetF"
+    $retiredTemperatureIds = @(
+        "SpringTemperatureRangeF", "SummerTemperatureRangeF",
+        "FallTemperatureRangeF", "WinterTemperatureRangeF"
     )
-    foreach ($legacyId in $legacyTemperatureIds) {
-        if ($sandbox -match ("option ChangingSkies\." + [regex]::Escape($legacyId)) -or
-            $null -ne $translations.PSObject.Properties["Sandbox_ChangingSkies_$legacyId"] -or
-            $null -ne $translations.PSObject.Properties["Sandbox_ChangingSkies_${legacyId}_tooltip"]) {
-            throw "Legacy temperature option $legacyId must not remain public."
+    foreach ($retiredId in $retiredTemperatureIds) {
+        if ($sandbox -match ("option ChangingSkies\." + [regex]::Escape($retiredId)) -or
+            $null -ne $translations.PSObject.Properties["Sandbox_ChangingSkies_$retiredId"] -or
+            $null -ne $translations.PSObject.Properties["Sandbox_ChangingSkies_${retiredId}_tooltip"]) {
+            throw "Retired temperature option $retiredId must not remain public."
         }
+    }
+    $settingsPath = Join-Path $serverRoot "Settings.lua"
+    $settingsSource = Get-Content -LiteralPath $settingsPath -Raw
+    if ($settingsSource -match "TemperatureRangeF" -or
+        $settingsSource -match "parseTemperatureRange" -or
+        $settingsSource -match "string\.match") {
+        throw "Compound-string temperature parser residue must not remain in Settings.lua."
     }
 
     $forbidden = Select-String -Path (Join-Path $serverRoot "*.lua") -Pattern @(
@@ -364,21 +392,32 @@ try {
         $thunder -match "hasHeavyRain\(") {
         throw "Added Thunder scope must use active-stage and current vanilla storm state only."
     }
+    if ($thunder -notmatch "lastTriggeredThunderMinuteSlot" -or
+        $thunder -notmatch "THUNDER_MINIMUM_INTERVAL_MINUTES" -or
+        $thunder -notmatch "lastTriggeredSlot > slot") {
+        throw "Added Thunder is missing the persisted five-minute success throttle or future-slot repair."
+    }
     $weatherPath = Join-Path $serverRoot "Weather.lua"
     $weather = Get-Content -LiteralPath $weatherPath -Raw
-    if ($weather -notmatch "triggerCustomWeather\(1\.0, true\)" -or
+    if ($weather -match "triggerCustomWeather\(1\.0, true\)" -or
+        $weather -notmatch "getSeason\(\)" -or
+        $weather -notmatch "SEASONAL_STORM_STAGE_BY_EROSION_SEASON" -or
+        $weather -notmatch "triggerCustomWeatherStage\(stageId, middleDurationHours\)" -or
+        $weather -notmatch "nominalTotalHours - 2\.0" -or
         $weather -notmatch "RANDOM_STORM_DURATION_MINIMUM" -or
         $weather -notmatch "RANDOM_STORM_DURATION_MAXIMUM") {
-        throw "Weather is missing the Vanilla Seasonal request or bounded random exact duration."
+        throw "Weather is missing guaranteed Seasonal mapping or bounded nominal duration subtraction."
     }
     $runner = Get-Content -LiteralPath (Join-Path $PSScriptRoot "LuaTestRunner.java") -Raw
     if ($runner -notmatch '"Weather\.lua",\s*"Thunder\.lua",\s*"SnowDiagnostics\.lua"') {
         throw "Lua test runner must load Thunder.lua in production module order."
     }
-    if ($readme -notmatch "Guaranteed storms and added thunder default to Off" -or
-        $readme -notmatch "SP live testing confirmed Insane Storm cadence and sustained Insane Added Thunder" -or
+    if ($readme -notmatch "Temperature work is one global climate calculation per in-game minute, not one calculation per player" -or
+        $readme -notmatch "Added Thunder scans online players only after an eligible roll succeeds" -or
+        $readme -notmatch "Debug Logging is disabled by default and can produce substantial log I/O" -or
+        $readme -notmatch "Vanilla suppresses thunder audio while local speed controls exceed normal speed" -or
         $readme -notmatch "remain unverified") {
-        throw "README must document the refined architecture and honest live boundary."
+        throw "README must document the M13 architecture, performance facts, and honest live boundary."
     }
 
     $publicCopyPaths = @(
@@ -392,7 +431,7 @@ try {
         }
     }
 
-    Write-Host "Static checks passed: public snow limitation and honest M12 live boundary; exact 16-option schema and order; four string temperature ranges; refined Storm and Added Thunder copy and values; Vanilla Seasonal and bounded random exact duration; active-stage thunder scope; no public semicolons; exact sound-only thunder flags; authority guard and expanded forbidden-pattern scan."
+    Write-Host "Static checks passed: public snow limitation and honest M13 live boundary; exact 20-option schema and order; eight numeric temperature targets; guaranteed Seasonal and bounded nominal storm duration; five-value Added Thunder with success throttle; active-stage thunder scope; no public semicolons; exact sound-only thunder flags; authority guard and expanded forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

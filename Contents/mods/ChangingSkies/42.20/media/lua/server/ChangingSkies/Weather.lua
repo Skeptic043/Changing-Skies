@@ -107,47 +107,62 @@ local function verifiedStart(climateManager, state, successStatus, description)
     return "TRIGGER_REJECTED"
 end
 
-local function chooseStormStage(settings, randomUnit)
+local function seasonalStormStage(climateManager)
+    if climateManager == nil or climateManager.getSeason == nil then
+        return 3
+    end
+    local season = climateManager:getSeason()
+    if season == nil or season.getSeason == nil then
+        return 3
+    end
+    local seasonId = tonumber(season:getSeason())
+    return Constants.SEASONAL_STORM_STAGE_BY_EROSION_SEASON[seasonId] or 3
+end
+
+local function chooseStormStage(climateManager, settings, randomUnit)
+    if settings.stormType == 1 then
+        return seasonalStormStage(climateManager)
+    end
     local stageId = Constants.STORM_STAGE_BY_TYPE[settings.stormType]
     if stageId ~= nil then
         return stageId
     end
-    local index = math.floor(randomUnit() * #Constants.STORM_STAGE_BY_TYPE) + 1
-    if index > #Constants.STORM_STAGE_BY_TYPE then
-        index = #Constants.STORM_STAGE_BY_TYPE
+    local stages = Constants.RANDOM_STORM_STAGE_IDS
+    local value = tonumber(randomUnit())
+    if value == nil or value ~= value or value == math.huge or value == -math.huge then
+        value = 0.0
+    elseif value < 0.0 then
+        value = 0.0
+    elseif value > 1.0 then
+        value = 1.0
     end
-    return Constants.STORM_STAGE_BY_TYPE[index]
+    local index = math.floor(value * #stages) + 1
+    if index > #stages then
+        index = #stages
+    end
+    return stages[index]
 end
 
 local function triggerStorm(climateManager, settings, state, randomUnit)
-    if settings.stormType == 5 then
-        climateManager:triggerCustomWeather(1.0, true)
-        return verifiedStart(
-            climateManager,
-            state,
-            "STORM_TRIGGERED",
-            "Started a vanilla-generated seasonal weather pattern."
-        )
-    end
-
-    local stageId = chooseStormStage(settings, randomUnit)
-    local durationHours
+    local stageId = chooseStormStage(climateManager, settings, randomUnit)
+    local nominalTotalHours
     if settings.stormLength == 5 then
-        durationHours = randomStormDuration(randomUnit)
+        nominalTotalHours = randomStormDuration(randomUnit)
     else
-        durationHours = randomBetween(
+        nominalTotalHours = randomBetween(
             randomUnit,
             settings.stormDurationBand.minimum,
             settings.stormDurationBand.maximum
         )
     end
-    climateManager:triggerCustomWeatherStage(stageId, durationHours)
+    local middleDurationHours = nominalTotalHours - 2.0
+    climateManager:triggerCustomWeatherStage(stageId, middleDurationHours)
     return verifiedStart(
         climateManager,
         state,
         "STORM_TRIGGERED",
         "Started vanilla storm stage " .. tostring(stageId) ..
-            " for " .. tostring(durationHours) .. " hours."
+            " with nominal total length " .. tostring(nominalTotalHours) .. " hours."
     )
 end
 
