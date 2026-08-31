@@ -40,6 +40,12 @@ function State.ensure(climateManager)
     if type(state.cooldownUntilWorldAgeHours) ~= "number" then
         state.cooldownUntilWorldAgeHours = nil
     end
+    local thunderSlot = state.lastProcessedThunderMinuteSlot
+    if type(thunderSlot) ~= "number" or thunderSlot ~= thunderSlot or
+        thunderSlot == math.huge or thunderSlot == -math.huge or
+        thunderSlot ~= math.floor(thunderSlot) then
+        state.lastProcessedThunderMinuteSlot = nil
+    end
     return state
 end
 

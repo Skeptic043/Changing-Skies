@@ -25,6 +25,42 @@ option ChangingSkies.AddedWeatherSeverity {
     valueTranslation = ChangingSkies_Severity,
 }
 
+option ChangingSkies.StormFrequency {
+    type = enum,
+    numValues = 7,
+    default = 1,
+    page = ChangingSkies,
+    translation = ChangingSkies_StormFrequency,
+    valueTranslation = ChangingSkies_OptionalFrequency,
+}
+
+option ChangingSkies.StormType {
+    type = enum,
+    numValues = 4,
+    default = 1,
+    page = ChangingSkies,
+    translation = ChangingSkies_StormType,
+    valueTranslation = ChangingSkies_StormType,
+}
+
+option ChangingSkies.StormLength {
+    type = enum,
+    numValues = 4,
+    default = 2,
+    page = ChangingSkies,
+    translation = ChangingSkies_StormLength,
+    valueTranslation = ChangingSkies_StormLength,
+}
+
+option ChangingSkies.AddedThunderFrequency {
+    type = enum,
+    numValues = 7,
+    default = 1,
+    page = ChangingSkies,
+    translation = ChangingSkies_AddedThunderFrequency,
+    valueTranslation = ChangingSkies_OptionalFrequency,
+}
+
 option ChangingSkies.CooldownMinimumHours {
     type = double,
     min = 0,

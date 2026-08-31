@@ -4,6 +4,7 @@ require "ChangingSkies/Settings"
 require "ChangingSkies/State"
 require "ChangingSkies/Temperature"
 require "ChangingSkies/Weather"
+require "ChangingSkies/Thunder"
 require "ChangingSkies/SnowDiagnostics"
 
 ChangingSkies = ChangingSkies or {}
@@ -28,6 +29,12 @@ local function onClimateTick(climateManager)
         worldAgeHours
     )
     ChangingSkies.Weather.reconcile(
+        climateManager,
+        settings,
+        state,
+        worldAgeHours
+    )
+    ChangingSkies.Thunder.onClimateTick(
         climateManager,
         settings,
         state,

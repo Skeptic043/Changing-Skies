@@ -10,6 +10,10 @@ local OPTION_NAMES = {
     "EnableAddedWeather",
     "AddedWeatherFrequency",
     "AddedWeatherSeverity",
+    "StormFrequency",
+    "StormType",
+    "StormLength",
+    "AddedThunderFrequency",
     "CooldownMinimumHours",
     "CooldownMaximumHours",
     "EnableTemperatureAdjustment",
@@ -105,6 +109,30 @@ function Settings.readFromTable(source)
         #Constants.SEVERITY_BANDS,
         Constants.DEFAULTS.severity
     )
+    local stormFrequency = integerInRange(
+        source.StormFrequency,
+        1,
+        #Constants.STORM_PROBABILITIES,
+        Constants.DEFAULTS.stormFrequency
+    )
+    local stormType = integerInRange(
+        source.StormType,
+        1,
+        4,
+        Constants.DEFAULTS.stormType
+    )
+    local stormLength = integerInRange(
+        source.StormLength,
+        1,
+        #Constants.STORM_DURATION_BANDS,
+        Constants.DEFAULTS.stormLength
+    )
+    local addedThunderFrequency = integerInRange(
+        source.AddedThunderFrequency,
+        1,
+        #Constants.THUNDER_PROBABILITIES,
+        Constants.DEFAULTS.addedThunderFrequency
+    )
 
     local result = {
         enableAddedWeather = source.EnableAddedWeather == true,
@@ -112,6 +140,13 @@ function Settings.readFromTable(source)
         weatherProbability = Constants.WEATHER_PROBABILITIES[frequency],
         severity = severity,
         severityBand = Constants.SEVERITY_BANDS[severity],
+        stormFrequency = stormFrequency,
+        stormProbability = Constants.STORM_PROBABILITIES[stormFrequency],
+        stormType = stormType,
+        stormLength = stormLength,
+        stormDurationBand = Constants.STORM_DURATION_BANDS[stormLength],
+        addedThunderFrequency = addedThunderFrequency,
+        addedThunderProbability = Constants.THUNDER_PROBABILITIES[addedThunderFrequency],
         cooldownMinimumHours = minimumCooldown,
         cooldownMaximumHours = maximumCooldown,
         enableTemperatureAdjustment = source.EnableTemperatureAdjustment == true,

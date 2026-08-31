@@ -75,14 +75,18 @@ try {
         throw "sandbox-options.txt is missing VERSION = 1"
     }
     $optionCount = ([regex]::Matches($sandbox, "(?m)^option ChangingSkies\.")).Count
-    if ($optionCount -ne 15) {
-        throw "Expected 15 Changing Skies sandbox options; found $optionCount"
+    if ($optionCount -ne 19) {
+        throw "Expected 19 Changing Skies sandbox options; found $optionCount"
     }
 
     $expectedOptionIds = @(
         "EnableAddedWeather",
         "AddedWeatherFrequency",
         "AddedWeatherSeverity",
+        "StormFrequency",
+        "StormType",
+        "StormLength",
+        "AddedThunderFrequency",
         "CooldownMinimumHours",
         "CooldownMaximumHours",
         "EnableTemperatureAdjustment",
@@ -102,7 +106,7 @@ try {
     ) | ForEach-Object { $_.Groups["id"].Value }
     $optionIdDifference = Compare-Object $expectedOptionIds $declaredOptionIds
     if ($optionIdDifference) {
-        throw "Changing Skies sandbox option IDs do not match the expected 15-option target-temperature schema."
+        throw "Changing Skies sandbox option IDs do not match the expected 19-option schema."
     }
     if ($sandbox -match "(?m)^option ChangingSkies\.[A-Za-z]+AdjustmentF\s*\{") {
         throw "Retired *AdjustmentF sandbox option declarations must not be present."
@@ -127,6 +131,30 @@ try {
         throw "AddedWeatherFrequency must expose six values and default to Very Low (1)."
     }
 
+    $enumOptions = @(
+        @("AddedWeatherSeverity", 6, 3, "ChangingSkies_Severity"),
+        @("StormFrequency", 7, 1, "ChangingSkies_OptionalFrequency"),
+        @("StormType", 4, 1, "ChangingSkies_StormType"),
+        @("StormLength", 4, 2, "ChangingSkies_StormLength"),
+        @("AddedThunderFrequency", 7, 1, "ChangingSkies_OptionalFrequency")
+    )
+    foreach ($enumOption in $enumOptions) {
+        $id = $enumOption[0]
+        $body = [regex]::Match(
+            $sandbox,
+            "(?s)option ChangingSkies\." + $id + "\s*\{(?<body>.*?)\}"
+        )
+        if (-not $body.Success -or
+            $body.Groups["body"].Value -notmatch
+                ("(?m)^\s*numValues\s*=\s*" + $enumOption[1] + ",") -or
+            $body.Groups["body"].Value -notmatch
+                ("(?m)^\s*default\s*=\s*" + $enumOption[2] + ",") -or
+            $body.Groups["body"].Value -notmatch
+                ("(?m)^\s*valueTranslation\s*=\s*" + $enumOption[3] + ",")) {
+            throw "$id is missing its exact enum count, default, or value translation."
+        }
+    }
+
     $serverRoot = Join-Path $modRoot "media\lua\server\ChangingSkies"
     $constantsPath = Join-Path $serverRoot "Constants.lua"
     $constants = Get-Content -LiteralPath $constantsPath -Raw
@@ -147,9 +175,10 @@ try {
         "Controls the chance for an added weather event, rolled every 10 in-game minutes. Cooldowns and naturally occurring weather add more time between checks.") {
         throw "Added Weather Frequency tooltip does not match the approved copy."
     }
-    if ($translations.Sandbox_ChangingSkies_AddedWeatherSeverity_tooltip -ne
-        "Controls the strength range for an added weather event. This does not set an exact weather type or duration.") {
-        throw "Added Weather Severity tooltip does not match the approved copy."
+    if ($translations.Sandbox_ChangingSkies_AddedWeatherSeverity -ne "Weather Strength" -or
+        $translations.Sandbox_ChangingSkies_AddedWeatherSeverity_tooltip -ne
+        "Controls the strength range for ordinary added weather. Vanilla still chooses its generated pattern, stages, type, and duration.") {
+        throw "Weather Strength label or tooltip does not match the approved copy."
     }
     if ($translations.Sandbox_ChangingSkies_EnableTemperatureAdjustment_tooltip -ne
         "Applies the chosen seasonal temperatures while retaining vanilla daily and weather variation.") {
@@ -162,12 +191,51 @@ try {
         if ($translations.PSObject.Properties[$key].Value -ne $frequencyValues[$index - 1]) {
             throw "Added Weather Frequency option $index does not match the approved six-value order."
         }
+        $severityKey = "Sandbox_ChangingSkies_Severity_option" + $index
+        if ($translations.PSObject.Properties[$severityKey].Value -ne
+            $frequencyValues[$index - 1]) {
+            throw "Weather Strength option $index does not preserve its six-value meaning."
+        }
     }
     foreach ($retiredIndex in 7, 8) {
         $key = "Sandbox_ChangingSkies_Frequency_option" + $retiredIndex
         if ($null -ne $translations.PSObject.Properties[$key]) {
             throw "Retired Added Weather Frequency option $retiredIndex must not be translated."
         }
+    }
+
+    $optionalFrequencyValues = @("Off", "Very Low", "Low", "Normal", "High", "Very High", "Insane")
+    for ($index = 1; $index -le $optionalFrequencyValues.Count; $index++) {
+        $key = "Sandbox_ChangingSkies_OptionalFrequency_option" + $index
+        if ($translations.PSObject.Properties[$key].Value -ne
+            $optionalFrequencyValues[$index - 1]) {
+            throw "Optional frequency value $index does not match the exact seven-value order."
+        }
+    }
+    $stormTypeValues = @("Heavy Precipitation", "Tropical Storm", "Blizzard", "Random Extreme")
+    $stormLengthValues = @(
+        "Short (6-12 hours)",
+        "Normal (12-24 hours)",
+        "Long (24-48 hours)",
+        "Extreme (48-96 hours)"
+    )
+    for ($index = 1; $index -le 4; $index++) {
+        if ($translations.PSObject.Properties["Sandbox_ChangingSkies_StormType_option$index"].Value -ne
+            $stormTypeValues[$index - 1] -or
+            $translations.PSObject.Properties["Sandbox_ChangingSkies_StormLength_option$index"].Value -ne
+            $stormLengthValues[$index - 1]) {
+            throw "Storm type or length value $index does not match the approved copy."
+        }
+    }
+    if ($translations.Sandbox_ChangingSkies_StormFrequency_tooltip -ne
+        "Controls the chance for a guaranteed storm, rolled every 10 in-game minutes. Storm rolls before ordinary added weather; if both are Insane, Storm wins every eligible opening. Active weather and the shared cooldown still apply." -or
+        $translations.Sandbox_ChangingSkies_StormType_tooltip -ne
+        "Selects the guaranteed storm stage. Tropical Storm has inherent vanilla thunder; Blizzard snow still depends on temperature." -or
+        $translations.Sandbox_ChangingSkies_StormLength_tooltip -ne
+        "Selects the requested main-stage duration. Vanilla adds a one-hour start stage and a one-hour clearing stage." -or
+        $translations.Sandbox_ChangingSkies_AddedThunderFrequency_tooltip -ne
+        "Controls additive sound-only thunder during any active weather. It does not add lightning flashes and does not suppress vanilla thunder.") {
+        throw "Storm or Added Thunder tooltip does not match the approved copy."
     }
 
     foreach ($season in "Spring", "Summer", "Fall", "Winter") {
@@ -218,7 +286,14 @@ try {
         "forceSnow",
         "resetModded",
         "resetOverrides",
-        "OnWeatherPeriodComplete"
+        "OnWeatherPeriodComplete",
+        "startThunderCloud",
+        "stopAllClouds",
+        "stopWeatherAndThunder",
+        "transmitServerTriggerLightning",
+        "transmitClient",
+        "transmit[A-Z]",
+        "sendClientCommand"
     )
     if ($forbidden) {
         throw "A forbidden weather/climate ownership pattern was found in server Lua."
@@ -251,7 +326,24 @@ try {
         throw "Snow diagnostics are missing the explicit previous/new tick labels."
     }
 
-    Write-Host "Static checks passed: public README and installed mod.info out-of-season ground-snow warnings; parsed 15 sandbox options; six ordered frequency translations with Very Low default; four exact season-on-Cold labels followed by four exact Warm labels, with -150 F to 200 F ranges, defaults, and tooltips; ignored seasonal title declarations and translations absent; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
+    $thunderPath = Join-Path $serverRoot "Thunder.lua"
+    $thunder = Get-Content -LiteralPath $thunderPath -Raw
+    if ($thunder -notmatch
+        "triggerThunderEvent\(x, y, true, false, false\)" -or
+        $bootstrap -notmatch 'require "ChangingSkies/Thunder"' -or
+        $bootstrap -notmatch "ChangingSkies\.Thunder\.onClimateTick\(") {
+        throw "Added Thunder is missing its exact sound-only event call or bootstrap wiring."
+    }
+    $runner = Get-Content -LiteralPath (Join-Path $PSScriptRoot "LuaTestRunner.java") -Raw
+    if ($runner -notmatch '"Weather\.lua",\s*"Thunder\.lua",\s*"SnowDiagnostics\.lua"') {
+        throw "Lua test runner must load Thunder.lua in production module order."
+    }
+    if ($readme -notmatch "Guaranteed storms and added thunder default to Off" -or
+        $readme -notmatch "have not yet passed live acceptance") {
+        throw "README must document the new architecture and remaining live boundary."
+    }
+
+    Write-Host "Static checks passed: public snow limitation and honest M11 live boundary; parsed exact 19-option schema/order/defaults; retained six-value Weather Frequency and Weather Strength meanings; exact Storm and Added Thunder enums/translations/tooltips; seasonal temperature labels/ranges; authoritative weather, thunder, and diagnostic wiring; exact sound-only thunder flags; runner production order; authority guard and expanded server-wide forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

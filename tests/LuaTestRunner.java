@@ -43,12 +43,12 @@ public final class LuaTestRunner {
         Field optionsField = CustomSandboxOptions.class.getDeclaredField("options");
         optionsField.setAccessible(true);
         int optionCount = ((List<?>) optionsField.get(options)).size();
-        if (optionCount != 15) {
+        if (optionCount != 19) {
             throw new IllegalStateException(
-                "Build 42.20 parsed " + optionCount + " sandbox options instead of 15"
+                "Build 42.20 parsed " + optionCount + " sandbox options instead of 19"
             );
         }
-        System.out.println("Build 42.20 parsed all 15 sandbox options.");
+        System.out.println("Build 42.20 parsed all 19 sandbox options.");
     }
 
     public static void main(String[] args) throws Exception {
@@ -70,6 +70,7 @@ public final class LuaTestRunner {
             "State.lua",
             "Temperature.lua",
             "Weather.lua",
+            "Thunder.lua",
             "SnowDiagnostics.lua"
         };
 

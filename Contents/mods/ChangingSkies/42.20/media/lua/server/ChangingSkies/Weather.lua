@@ -17,6 +17,10 @@ local function randomBetween(randomUnit, minimum, maximum)
     return minimum + (maximum - minimum) * randomUnit()
 end
 
+local function schedulerEnabled(settings)
+    return settings.enableAddedWeather == true or (settings.stormProbability or 0.0) > 0.0
+end
+
 local function beginCooldown(settings, state, worldAgeHours, randomUnit)
     local cooldownHours = randomBetween(
         randomUnit,
@@ -32,7 +36,7 @@ function Weather.reconcile(climateManager, settings, state, worldAgeHours, rando
     randomUnit = randomUnit or defaultRandomUnit
     local running = isRunning(climateManager)
 
-    if not settings.enableAddedWeather then
+    if not schedulerEnabled(settings) then
         if not running or not state.lastWeatherRunning then
             state.currentWeatherCreatedByChangingSkies = false
         end
@@ -69,6 +73,67 @@ function Weather.reconcile(climateManager, settings, state, worldAgeHours, rando
     return state.schedulerStatus
 end
 
+local function verifiedStart(climateManager, state, successStatus, description)
+    -- B42.20 can report trigger success even if WeatherPeriod initialization rejects it.
+    if isRunning(climateManager) then
+        state.lastWeatherRunning = true
+        state.currentWeatherCreatedByChangingSkies = true
+        state.schedulerStatus = "ACTIVE"
+        Log.debug(description)
+        return successStatus
+    end
+
+    state.currentWeatherCreatedByChangingSkies = false
+    state.schedulerStatus = "ELIGIBLE"
+    Log.once("weather-trigger-rejected", "Vanilla did not start the requested weather period; scheduler remains eligible.")
+    return "TRIGGER_REJECTED"
+end
+
+local function chooseStormStage(settings, randomUnit)
+    local stageId = Constants.STORM_STAGE_BY_TYPE[settings.stormType]
+    if stageId ~= nil then
+        return stageId
+    end
+    local index = math.floor(randomUnit() * #Constants.STORM_STAGE_BY_TYPE) + 1
+    if index > #Constants.STORM_STAGE_BY_TYPE then
+        index = #Constants.STORM_STAGE_BY_TYPE
+    end
+    return Constants.STORM_STAGE_BY_TYPE[index]
+end
+
+local function triggerStorm(climateManager, settings, state, randomUnit)
+    local stageId = chooseStormStage(settings, randomUnit)
+    local durationHours = randomBetween(
+        randomUnit,
+        settings.stormDurationBand.minimum,
+        settings.stormDurationBand.maximum
+    )
+    climateManager:triggerCustomWeatherStage(stageId, durationHours)
+    return verifiedStart(
+        climateManager,
+        state,
+        "STORM_TRIGGERED",
+        "Started vanilla storm stage " .. tostring(stageId) ..
+            " for " .. tostring(durationHours) .. " hours."
+    )
+end
+
+local function triggerOrdinaryWeather(climateManager, settings, state, randomUnit)
+    local strength = randomBetween(
+        randomUnit,
+        settings.severityBand.minimum,
+        settings.severityBand.maximum
+    )
+    local coldFront = randomUnit() < 0.5
+    climateManager:triggerCustomWeather(strength, coldFront)
+    return verifiedStart(
+        climateManager,
+        state,
+        "TRIGGERED",
+        "Started vanilla-generated weather at strength " .. tostring(strength) .. "."
+    )
+end
+
 function Weather.onTenMinutes(climateManager, settings, state, worldAgeHours, randomUnit)
     randomUnit = randomUnit or defaultRandomUnit
     local slot = math.floor(worldAgeHours * 6.0 + 0.000001)
@@ -82,31 +147,15 @@ function Weather.onTenMinutes(climateManager, settings, state, worldAgeHours, ra
         return status
     end
 
-    if randomUnit() >= settings.weatherProbability then
+    local stormProbability = settings.stormProbability or 0.0
+    if stormProbability > 0.0 and randomUnit() < stormProbability then
+        return triggerStorm(climateManager, settings, state, randomUnit)
+    end
+
+    if settings.enableAddedWeather ~= true or randomUnit() >= settings.weatherProbability then
         return "ROLL_FAILED"
     end
-
-    local strength = randomBetween(
-        randomUnit,
-        settings.severityBand.minimum,
-        settings.severityBand.maximum
-    )
-    local coldFront = randomUnit() < 0.5
-    climateManager:triggerCustomWeather(strength, coldFront)
-
-    -- B42.20 can report trigger success even if WeatherPeriod initialization rejects it.
-    if isRunning(climateManager) then
-        state.lastWeatherRunning = true
-        state.currentWeatherCreatedByChangingSkies = true
-        state.schedulerStatus = "ACTIVE"
-        Log.debug("Started vanilla-generated weather at strength " .. tostring(strength) .. ".")
-        return "TRIGGERED"
-    end
-
-    state.currentWeatherCreatedByChangingSkies = false
-    state.schedulerStatus = "ELIGIBLE"
-    Log.once("weather-trigger-rejected", "Vanilla did not start the requested weather period; scheduler remains eligible.")
-    return "TRIGGER_REJECTED"
+    return triggerOrdinaryWeather(climateManager, settings, state, randomUnit)
 end
 
 ChangingSkies.Weather = Weather

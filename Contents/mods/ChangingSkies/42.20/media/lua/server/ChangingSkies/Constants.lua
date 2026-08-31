@@ -12,6 +12,10 @@ Constants.DEFAULTS = {
     enableAddedWeather = true,
     frequency = 1,
     severity = 3,
+    stormFrequency = 1,
+    stormType = 1,
+    stormLength = 2,
+    addedThunderFrequency = 1,
     cooldownMinimumHours = 24.0,
     cooldownMaximumHours = 72.0,
     enableTemperatureAdjustment = false,
@@ -36,6 +40,42 @@ Constants.SEVERITY_BANDS = {
     { minimum = 0.76, maximum = 0.90 },
     { minimum = 0.91, maximum = 1.00 },
 }
+
+Constants.STORM_PROBABILITIES = {
+    0.0,
+    1.0 / (144.0 * 14.0),
+    1.0 / (144.0 * 10.0),
+    1.0 / (144.0 * 7.0),
+    1.0 / (144.0 * 4.0),
+    1.0 / (144.0 * 2.0),
+    1.0,
+}
+
+Constants.STORM_STAGE_BY_TYPE = {
+    2,
+    8,
+    7,
+}
+
+Constants.STORM_DURATION_BANDS = {
+    { minimum = 6.0, maximum = 12.0 },
+    { minimum = 12.0, maximum = 24.0 },
+    { minimum = 24.0, maximum = 48.0 },
+    { minimum = 48.0, maximum = 96.0 },
+}
+
+Constants.THUNDER_PROBABILITIES = {
+    0.0,
+    1.0 / 120.0,
+    1.0 / 60.0,
+    1.0 / 30.0,
+    1.0 / 15.0,
+    1.0 / 5.0,
+    1.0,
+}
+
+Constants.THUNDER_MINIMUM_DISTANCE = 250.0
+Constants.THUNDER_MAXIMUM_DISTANCE = 900.0
 
 Constants.SEASON_TEMPERATURE_REFERENCES_F = {
     Spring = { coldF = 37.5, warmF = 66.3 },
