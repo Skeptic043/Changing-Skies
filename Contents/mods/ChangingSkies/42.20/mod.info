@@ -1,4 +1,3 @@
 name=Changing Skies
 id=ChangingSkies
-description=Vanilla-driven seasonal temperature adjustments and conservative added weather for Build 42.20.
-
+description=Vanilla-driven seasonal temperature adjustments and conservative added weather for Build 42.20. Out-of-season snow may fall, but accumulated ground snow is only displayed during vanilla Winter.

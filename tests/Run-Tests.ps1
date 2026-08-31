@@ -45,6 +45,29 @@ try {
     if ($modInfo -notmatch "(?m)^id=ChangingSkies$") {
         throw "mod.info is missing id=ChangingSkies"
     }
+    $modInfoWarning = "Out-of-season snow may fall, but accumulated ground snow is only displayed during vanilla Winter."
+    if (-not $modInfo.Contains($modInfoWarning)) {
+        throw "mod.info is missing the approved out-of-season ground-snow warning."
+    }
+
+    $readme = Get-Content -LiteralPath (Join-Path $repositoryRoot "README.md") -Raw
+    $limitationHeading = "## Known limitation: out-of-season ground snow"
+    $featureListMarker = "This milestone contains:"
+    $headingIndex = $readme.IndexOf($limitationHeading)
+    $featureListIndex = $readme.IndexOf($featureListMarker)
+    if ($headingIndex -lt 0 -or $featureListIndex -lt 0 -or $headingIndex -gt $featureListIndex) {
+        throw "README out-of-season ground-snow limitation must appear before the feature list."
+    }
+    $readmeLimitationMeaning = @(
+        "Sufficiently cold precipitation can fall as snow outside vanilla Winter, and vanilla can accumulate that snow numerically.",
+        "However, in Build 42.20.4 the normal renderer does not display the accumulated ground-snow overlay outside vanilla Winter.",
+        "This is a Build 42.20.4 renderer limitation, not a failure of the sandbox settings."
+    )
+    foreach ($requiredMeaning in $readmeLimitationMeaning) {
+        if (-not $readme.Contains($requiredMeaning)) {
+            throw "README out-of-season ground-snow limitation is missing approved meaning."
+        }
+    }
 
     $sandboxPath = Join-Path $modRoot "media\sandbox-options.txt"
     $sandbox = Get-Content -LiteralPath $sandboxPath -Raw
@@ -228,7 +251,7 @@ try {
         throw "Snow diagnostics are missing the explicit previous/new tick labels."
     }
 
-    Write-Host "Static checks passed: parsed 15 sandbox options; six ordered frequency translations with Very Low default; four exact season-on-Cold labels followed by four exact Warm labels, with -150 F to 200 F ranges, defaults, and tooltips; ignored seasonal title declarations and translations absent; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
+    Write-Host "Static checks passed: public README and installed mod.info out-of-season ground-snow warnings; parsed 15 sandbox options; six ordered frequency translations with Very Low default; four exact season-on-Cold labels followed by four exact Warm labels, with -150 F to 200 F ranges, defaults, and tooltips; ignored seasonal title declarations and translations absent; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {

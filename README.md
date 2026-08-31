@@ -2,6 +2,10 @@
 
 Changing Skies is a small Project Zomboid Build 42.20 foundation built around one rule: vanilla owns the weather; this mod only influences it.
 
+## Known limitation: out-of-season ground snow
+
+Sufficiently cold precipitation can fall as snow outside vanilla Winter, and vanilla can accumulate that snow numerically. However, in Build 42.20.4 the normal renderer does not display the accumulated ground-snow overlay outside vanilla Winter. This is a Build 42.20.4 renderer limitation, not a failure of the sandbox settings.
+
 This milestone contains:
 
 - opt-in seasonal cold and warm target temperatures based on fixed vanilla Normal references;
