@@ -56,7 +56,6 @@ option ChangingSkies.SpringColdTargetF {
     max = 200,
     default = 37.5,
     page = ChangingSkies,
-    title = ChangingSkies_SpringTemperatureTargetRange,
     translation = ChangingSkies_SpringColdTargetF,
 }
 
@@ -75,7 +74,6 @@ option ChangingSkies.SummerColdTargetF {
     max = 200,
     default = 60.2,
     page = ChangingSkies,
-    title = ChangingSkies_SummerTemperatureTargetRange,
     translation = ChangingSkies_SummerColdTargetF,
 }
 
@@ -94,7 +92,6 @@ option ChangingSkies.FallColdTargetF {
     max = 200,
     default = 42.4,
     page = ChangingSkies,
-    title = ChangingSkies_FallTemperatureTargetRange,
     translation = ChangingSkies_FallColdTargetF,
 }
 
@@ -113,7 +110,6 @@ option ChangingSkies.WinterColdTargetF {
     max = 200,
     default = 19.9,
     page = ChangingSkies,
-    title = ChangingSkies_WinterTemperatureTargetRange,
     translation = ChangingSkies_WinterColdTargetF,
 }
 
