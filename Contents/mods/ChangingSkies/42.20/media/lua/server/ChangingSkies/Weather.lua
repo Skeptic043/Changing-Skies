@@ -17,6 +17,24 @@ local function randomBetween(randomUnit, minimum, maximum)
     return minimum + (maximum - minimum) * randomUnit()
 end
 
+local function randomStormDuration(randomUnit)
+    local value = tonumber(randomUnit())
+    if value == nil or value ~= value or value == math.huge or value == -math.huge then
+        value = 0.0
+    elseif value < 0.0 then
+        value = 0.0
+    elseif value > 1.0 then
+        value = 1.0
+    end
+    local count = Constants.RANDOM_STORM_DURATION_MAXIMUM -
+        Constants.RANDOM_STORM_DURATION_MINIMUM + 1
+    local offset = math.floor(value * count)
+    if offset >= count then
+        offset = count - 1
+    end
+    return Constants.RANDOM_STORM_DURATION_MINIMUM + offset
+end
+
 local function schedulerEnabled(settings)
     return settings.enableAddedWeather == true or (settings.stormProbability or 0.0) > 0.0
 end
@@ -102,12 +120,27 @@ local function chooseStormStage(settings, randomUnit)
 end
 
 local function triggerStorm(climateManager, settings, state, randomUnit)
+    if settings.stormType == 5 then
+        climateManager:triggerCustomWeather(1.0, true)
+        return verifiedStart(
+            climateManager,
+            state,
+            "STORM_TRIGGERED",
+            "Started a vanilla-generated seasonal weather pattern."
+        )
+    end
+
     local stageId = chooseStormStage(settings, randomUnit)
-    local durationHours = randomBetween(
-        randomUnit,
-        settings.stormDurationBand.minimum,
-        settings.stormDurationBand.maximum
-    )
+    local durationHours
+    if settings.stormLength == 5 then
+        durationHours = randomStormDuration(randomUnit)
+    else
+        durationHours = randomBetween(
+            randomUnit,
+            settings.stormDurationBand.minimum,
+            settings.stormDurationBand.maximum
+        )
+    end
     climateManager:triggerCustomWeatherStage(stageId, durationHours)
     return verifiedStart(
         climateManager,

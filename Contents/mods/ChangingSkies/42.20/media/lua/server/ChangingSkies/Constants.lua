@@ -16,6 +16,7 @@ Constants.DEFAULTS = {
     stormType = 1,
     stormLength = 2,
     addedThunderFrequency = 1,
+    addedThunderScope = 1,
     cooldownMinimumHours = 24.0,
     cooldownMaximumHours = 72.0,
     enableTemperatureAdjustment = false,
@@ -64,6 +65,16 @@ Constants.STORM_DURATION_BANDS = {
     { minimum = 48.0, maximum = 96.0 },
 }
 
+Constants.RANDOM_STORM_DURATION_MINIMUM = 4
+Constants.RANDOM_STORM_DURATION_MAXIMUM = 100
+
+Constants.THUNDER_STAGE_IDS = {
+    [2] = true,
+    [3] = true,
+    [7] = true,
+    [8] = true,
+}
+
 Constants.THUNDER_PROBABILITIES = {
     0.0,
     1.0 / 120.0,
@@ -82,6 +93,13 @@ Constants.SEASON_TEMPERATURE_REFERENCES_F = {
     Summer = { coldF = 60.2, warmF = 89.0 },
     Fall = { coldF = 42.4, warmF = 71.2 },
     Winter = { coldF = 19.9, warmF = 48.7 },
+}
+
+Constants.DEFAULT_TEMPERATURE_RANGES_F = {
+    Spring = { coldF = 37.0, warmF = 66.0, text = "37 to 66" },
+    Summer = { coldF = 60.0, warmF = 89.0, text = "60 to 89" },
+    Fall = { coldF = 42.0, warmF = 71.0, text = "42 to 71" },
+    Winter = { coldF = 19.0, warmF = 48.0, text = "19 to 48" },
 }
 
 -- GameTime months are zero-based: January is 0 and December is 11.

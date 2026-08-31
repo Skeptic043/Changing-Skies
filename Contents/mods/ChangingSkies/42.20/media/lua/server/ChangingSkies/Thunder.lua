@@ -59,9 +59,22 @@ local function collectPlayers()
     return players
 end
 
-local function weatherRunning(climateManager)
+local function runningWeatherPeriod(climateManager)
     local weatherPeriod = climateManager:getWeatherPeriod()
-    return weatherPeriod ~= nil and weatherPeriod:isRunning()
+    if weatherPeriod ~= nil and weatherPeriod:isRunning() then
+        return weatherPeriod
+    end
+    return nil
+end
+
+local function scopeAllows(period, scope)
+    if scope == 2 then
+        return Constants.THUNDER_STAGE_IDS[period:getCurrentStageID()] == true
+    end
+    if scope == 3 then
+        return period:isThunderStorm() or period:isTropicalStorm()
+    end
+    return true
 end
 
 local function roundInteger(value)
@@ -88,8 +101,12 @@ function Thunder.onClimateTick(climateManager, settings, state, worldAgeHours, r
     if probability <= 0.0 then
         return "DISABLED"
     end
-    if not weatherRunning(climateManager) then
+    local period = runningWeatherPeriod(climateManager)
+    if period == nil then
         return "NO_WEATHER"
+    end
+    if not scopeAllows(period, settings.addedThunderScope or 1) then
+        return "OUT_OF_SCOPE"
     end
     if randomUnit() >= probability then
         return "ROLL_FAILED"

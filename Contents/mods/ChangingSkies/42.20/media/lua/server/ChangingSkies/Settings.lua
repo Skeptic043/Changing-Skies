@@ -14,17 +14,14 @@ local OPTION_NAMES = {
     "StormType",
     "StormLength",
     "AddedThunderFrequency",
+    "AddedThunderScope",
     "CooldownMinimumHours",
     "CooldownMaximumHours",
     "EnableTemperatureAdjustment",
-    "SpringColdTargetF",
-    "SpringWarmTargetF",
-    "SummerColdTargetF",
-    "SummerWarmTargetF",
-    "FallColdTargetF",
-    "FallWarmTargetF",
-    "WinterColdTargetF",
-    "WinterWarmTargetF",
+    "SpringTemperatureRangeF",
+    "SummerTemperatureRangeF",
+    "FallTemperatureRangeF",
+    "WinterTemperatureRangeF",
     "DebugLogging",
 }
 
@@ -45,33 +42,54 @@ local function integerInRange(value, minimum, maximum, fallback)
     return number
 end
 
-local function validatePair(profile, coldTargetF, warmTargetF)
-    if warmTargetF > coldTargetF then
-        local pair = { coldTargetF = coldTargetF, warmTargetF = warmTargetF }
-        Settings.lastValidTemperaturePairs[profile] = pair
-        return pair
-    end
+local function copyPair(pair)
+    return {
+        coldTargetF = pair.coldTargetF,
+        warmTargetF = pair.warmTargetF,
+    }
+end
 
-    Log.once(
-        "invalid-temperature-" .. profile,
-        "Invalid " .. profile .. " temperature targets; preserving the last valid pair or vanilla references."
-    )
-    local previous = Settings.lastValidTemperaturePairs[profile]
-    if previous then
-        return {
-            coldTargetF = previous.coldTargetF,
-            warmTargetF = previous.warmTargetF,
-        }
+local function defaultPair(profile)
+    local defaults = Constants.DEFAULT_TEMPERATURE_RANGES_F[profile]
+    return { coldTargetF = defaults.coldF, warmTargetF = defaults.warmF }
+end
+
+local function parseTemperatureRange(value)
+    if type(value) ~= "string" or #value > 64 then
+        return nil
     end
-    local reference = Constants.SEASON_TEMPERATURE_REFERENCES_F[profile]
-    return { coldTargetF = reference.coldF, warmTargetF = reference.warmF }
+    local coldText, warmText = string.match(
+        value,
+        "^%s*([+-]?%d*%.?%d+)%s*[tT][oO]%s*([+-]?%d*%.?%d+)%s*$"
+    )
+    if coldText == nil or warmText == nil then
+        return nil
+    end
+    local coldTargetF = finiteNumber(coldText, nil)
+    local warmTargetF = finiteNumber(warmText, nil)
+    if coldTargetF == nil or warmTargetF == nil or
+        coldTargetF < -150.0 or coldTargetF > 200.0 or
+        warmTargetF < -150.0 or warmTargetF > 200.0 or
+        warmTargetF <= coldTargetF then
+        return nil
+    end
+    return { coldTargetF = coldTargetF, warmTargetF = warmTargetF }
 end
 
 local function readPair(source, profile)
+    local defaultRange = Constants.DEFAULT_TEMPERATURE_RANGES_F[profile]
+    local rawValue = source[profile .. "TemperatureRangeF"]
+    if rawValue == nil then
+        rawValue = defaultRange.text
+    end
+    local pair = parseTemperatureRange(rawValue)
+    if pair ~= nil then
+        Settings.lastValidTemperaturePairs[profile] = copyPair(pair)
+    else
+        local previous = Settings.lastValidTemperaturePairs[profile]
+        pair = previous and copyPair(previous) or defaultPair(profile)
+    end
     local reference = Constants.SEASON_TEMPERATURE_REFERENCES_F[profile]
-    local cold = finiteNumber(source[profile .. "ColdTargetF"], reference.coldF)
-    local warm = finiteNumber(source[profile .. "WarmTargetF"], reference.warmF)
-    local pair = validatePair(profile, cold, warm)
     pair.coldDeltaF = pair.coldTargetF - reference.coldF
     pair.warmDeltaF = pair.warmTargetF - reference.warmF
     return pair
@@ -118,13 +136,13 @@ function Settings.readFromTable(source)
     local stormType = integerInRange(
         source.StormType,
         1,
-        4,
+        5,
         Constants.DEFAULTS.stormType
     )
     local stormLength = integerInRange(
         source.StormLength,
         1,
-        #Constants.STORM_DURATION_BANDS,
+        #Constants.STORM_DURATION_BANDS + 1,
         Constants.DEFAULTS.stormLength
     )
     local addedThunderFrequency = integerInRange(
@@ -132,6 +150,12 @@ function Settings.readFromTable(source)
         1,
         #Constants.THUNDER_PROBABILITIES,
         Constants.DEFAULTS.addedThunderFrequency
+    )
+    local addedThunderScope = integerInRange(
+        source.AddedThunderScope,
+        1,
+        3,
+        Constants.DEFAULTS.addedThunderScope
     )
 
     local result = {
@@ -147,6 +171,7 @@ function Settings.readFromTable(source)
         stormDurationBand = Constants.STORM_DURATION_BANDS[stormLength],
         addedThunderFrequency = addedThunderFrequency,
         addedThunderProbability = Constants.THUNDER_PROBABILITIES[addedThunderFrequency],
+        addedThunderScope = addedThunderScope,
         cooldownMinimumHours = minimumCooldown,
         cooldownMaximumHours = maximumCooldown,
         enableTemperatureAdjustment = source.EnableTemperatureAdjustment == true,
