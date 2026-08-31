@@ -161,13 +161,13 @@ try {
 
     $targetOptions = @(
         @("SpringColdTargetF", "37.5", "Spring Cold", "Cold target for spring (March-May). Vanilla Normal reference: 37.5 F. Ordinary daily and weather variation can move beyond it."),
-        @("SpringWarmTargetF", "66.3", "Spring Warm", "Warm target for spring (March-May). Vanilla Normal reference: 66.3 F. Ordinary daily and weather variation can move beyond it."),
+        @("SpringWarmTargetF", "66.3", "Warm", "Warm target for spring (March-May). Vanilla Normal reference: 66.3 F. Ordinary daily and weather variation can move beyond it."),
         @("SummerColdTargetF", "60.2", "Summer Cold", "Cold target for summer (June-August). Vanilla Normal reference: 60.2 F. Ordinary daily and weather variation can move beyond it."),
-        @("SummerWarmTargetF", "89.0", "Summer Warm", "Warm target for summer (June-August). Vanilla Normal reference: 89.0 F. Ordinary daily and weather variation can move beyond it."),
+        @("SummerWarmTargetF", "89.0", "Warm", "Warm target for summer (June-August). Vanilla Normal reference: 89.0 F. Ordinary daily and weather variation can move beyond it."),
         @("FallColdTargetF", "42.4", "Fall Cold", "Cold target for fall (September-November). Vanilla Normal reference: 42.4 F. Ordinary daily and weather variation can move beyond it."),
-        @("FallWarmTargetF", "71.2", "Fall Warm", "Warm target for fall (September-November). Vanilla Normal reference: 71.2 F. Ordinary daily and weather variation can move beyond it."),
+        @("FallWarmTargetF", "71.2", "Warm", "Warm target for fall (September-November). Vanilla Normal reference: 71.2 F. Ordinary daily and weather variation can move beyond it."),
         @("WinterColdTargetF", "19.9", "Winter Cold", "Cold target for winter (December-February). Vanilla Normal reference: 19.9 F. Ordinary daily and weather variation can move beyond it."),
-        @("WinterWarmTargetF", "48.7", "Winter Warm", "Warm target for winter (December-February). Vanilla Normal reference: 48.7 F. Ordinary daily and weather variation can move beyond it.")
+        @("WinterWarmTargetF", "48.7", "Warm", "Warm target for winter (December-February). Vanilla Normal reference: 48.7 F. Ordinary daily and weather variation can move beyond it.")
     )
     foreach ($target in $targetOptions) {
         $id = $target[0]
@@ -228,7 +228,7 @@ try {
         throw "Snow diagnostics are missing the explicit previous/new tick labels."
     }
 
-    Write-Host "Static checks passed: parsed 15 sandbox options; six ordered frequency translations with Very Low default; eight exact stock-safe seasonal temperature labels with -150 F to 200 F ranges, defaults, and tooltips; ignored seasonal title declarations and translations absent; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
+    Write-Host "Static checks passed: parsed 15 sandbox options; six ordered frequency translations with Very Low default; four exact season-on-Cold labels followed by four exact Warm labels, with -150 F to 200 F ranges, defaults, and tooltips; ignored seasonal title declarations and translations absent; retired options absent; authoritative snow diagnostic wiring, previous/new tick labels, and diagnostic-only forbidden-pattern scan; authority guard and server-wide forbidden-pattern scan."
 }
 finally {
     if (Test-Path -LiteralPath $buildDirectory) {
